@@ -1,0 +1,50 @@
+{
+  "name": "mongodb-vs-postgresql-benchmark",
+  "version": "1.0.0",
+  "description": "Performance benchmark comparison between MongoDB and PostgreSQL",
+  "main": "src/cli.js",
+  "scripts": {
+    "start:db": "docker compose up -d",
+    "stop:db": "docker compose down",
+    "clean:db": "docker compose down -v",
+    "check:db": "node -e \"require('./src/utils/db-health-check').checkDatabasesHealth()\"",
+    "init:db": "node src/utils/init-db.js",
+    "reset:db": "node src/utils/clean-db.js && node src/utils/init-db.js",
+    "health:db": "node src/utils/db-health-check.js",
+    "benchmark": "node src/cli.js",
+    "benchmark:list": "node src/cli.js list",
+    "benchmark:run": "node src/cli.js run",
+    "benchmark:insert": "node src/cli.js run insert",
+    "benchmark:find": "node src/cli.js run find",
+    "benchmark:complex": "node src/cli.js run complex-queries",
+    "benchmark:caching": "node src/cli.js run caching",
+    "benchmark:all": "node src/core/run-all.js",
+    "benchmark:info": "node src/cli.js info",
+    "benchmark:fix": "node src/core/utils/fix-module-loading.js",
+    "benchmark:small": "BENCHMARK_SIZE=small node src/core/run-all.js",
+    "benchmark:medium": "BENCHMARK_SIZE=medium node src/core/run-all.js",
+    "benchmark:large": "BENCHMARK_SIZE=large node src/core/run-all.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/cli.js"
+  },
+  "keywords": [
+    "mongodb",
+    "postgresql",
+    "benchmark",
+    "performance",
+    "database"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@faker-js/faker": "^9.5.1",
+    "chalk": "^4.1.2",
+    "chart.js": "^4.4.8",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "mongodb": "^6.14.0",
+    "mongoose": "^8.11.0",
+    "pg": "^8.13.3",
+    "pg-promise": "^11.10.2"
+  }
+}
