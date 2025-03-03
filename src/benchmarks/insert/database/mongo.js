@@ -1,48 +1,48 @@
 /**
- * Operações MongoDB para o benchmark de inserção
+ * MongoDB operations for the insert benchmark
  */
 
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-// Prefixo para coleções deste benchmark
+// Prefix for collections in this benchmark
 const COLLECTION_PREFIX = 'insert_';
 
-// URI de conexão MongoDB
+// MongoDB connection URI
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/benchmark';
 
 // MongoDB connection singleton (persistent connection for benchmarks)
 let cachedClient = null;
 
 /**
- * Configurar ambiente MongoDB para o benchmark
- * @param {Object} options - Opções de configuração
+ * Set up MongoDB environment for the benchmark
+ * @param {Object} options - Configuration options
  */
 async function setup(options = {}) {
   const client = await getClient();
   const db = client.db();
   
   try {
-    // Criar coleções para o benchmark
+    // Create collections for the benchmark
     await db.createCollection(`${COLLECTION_PREFIX}users`);
     
     console.log('MongoDB collections created successfully for insert benchmark');
   } catch (error) {
     console.error('Error setting up MongoDB for insert benchmark:', error);
   }
-  // Não fechamos a conexão para reutilizá-la
+  // We don't close the connection so it can be reused
 }
 
 /**
- * Limpar ambiente MongoDB para o benchmark
- * @param {Object} options - Opções de configuração
+ * Clean up MongoDB environment for the benchmark
+ * @param {Object} options - Configuration options
  */
 async function cleanup(options = {}) {
   const client = await getClient();
   const db = client.db();
   
   try {
-    // Excluir coleções do benchmark
+    // Delete benchmark collections
     await db.collection(`${COLLECTION_PREFIX}users`).drop();
     
     console.log('MongoDB collections cleaned successfully for insert benchmark');
@@ -53,7 +53,7 @@ async function cleanup(options = {}) {
       console.error('Error cleaning up MongoDB for insert benchmark:', error);
     }
   } finally {
-    // Fechamos a conexão apenas na limpeza final
+    // We only close the connection during final cleanup
     if (cachedClient) {
       await cachedClient.close();
       cachedClient = null;
@@ -62,9 +62,9 @@ async function cleanup(options = {}) {
 }
 
 /**
- * Inserir um único usuário
- * @param {Object} user - Documento do usuário
- * @returns {Promise<Object>} - Resultado da operação
+ * Insert a single user
+ * @param {Object} user - User document
+ * @returns {Promise<Object>} - Operation result
  */
 async function insertUser(user) {
   const client = await getClient();
@@ -77,13 +77,13 @@ async function insertUser(user) {
     console.error('Error inserting user in MongoDB:', error);
     throw error;
   }
-  // Não fechamos a conexão após cada operação para melhor performance
+  // We don't close the connection after each operation for better performance
 }
 
 /**
- * Inserir múltiplos usuários
- * @param {Array<Object>} users - Array de documentos de usuários
- * @returns {Promise<Object>} - Resultado da operação
+ * Insert multiple users
+ * @param {Array<Object>} users - Array of user documents
+ * @returns {Promise<Object>} - Operation result
  */
 async function insertUsers(users) {
   const client = await getClient();
@@ -96,7 +96,7 @@ async function insertUsers(users) {
     console.error('Error inserting users in MongoDB:', error);
     throw error;
   }
-  // Não fechamos a conexão após cada operação para melhor performance
+  // We don't close the connection after each operation for better performance
 }
 
 /**
@@ -104,14 +104,14 @@ async function insertUsers(users) {
  * @returns {Promise<MongoClient>} MongoDB client
  */
 async function getClient() {
-  // Reutilizar a conexão existente se disponível
+  // Reuse existing connection if available
   if (cachedClient) {
     return cachedClient;
   }
   
-  // Criar uma nova conexão se necessário
+  // Create a new connection if needed
   const client = new MongoClient(MONGO_URI, {
-    // Configurações de pool de conexões
+    // Connection pool settings
     maxPoolSize: 10,
     minPoolSize: 5,
     connectTimeoutMS: 10000,

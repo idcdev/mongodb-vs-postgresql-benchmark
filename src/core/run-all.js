@@ -70,7 +70,7 @@ async function runAllBenchmarks(options = {}) {
     
     console.log(chalk.green('\nAll benchmarks execution completed.'));
     
-    // Forçar o encerramento do processo após a conclusão dos benchmarks
+    // Force process exit after benchmark completion
     console.log(chalk.dim('Waiting for connections to close before exiting...'));
     setTimeout(() => {
       process.exit(0);

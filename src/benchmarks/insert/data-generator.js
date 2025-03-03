@@ -1,12 +1,12 @@
 /**
- * Gerador de dados para o benchmark de inserção
+ * Data generator for the insert benchmark
  */
 
 const { faker } = require('@faker-js/faker');
 
 /**
- * Gera um usuário aleatório
- * @returns {Object} - Dados do usuário
+ * Generates a random user
+ * @returns {Object} - User data
  */
 function generateUser() {
   return {
@@ -35,9 +35,9 @@ function generateUser() {
 }
 
 /**
- * Gera múltiplos usuários aleatórios
- * @param {number} count - Número de usuários a serem gerados
- * @returns {Array<Object>} - Array de dados de usuários
+ * Generates multiple random users
+ * @param {number} count - Number of users to generate
+ * @returns {Array<Object>} - Array of user data
  */
 function generateUsers(count) {
   return Array.from({ length: count }, (_, index) => {

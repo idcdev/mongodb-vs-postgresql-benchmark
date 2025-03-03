@@ -1,8 +1,8 @@
 /**
- * Benchmark de Busca
+ * Find Benchmark
  * 
- * Este benchmark compara a performance do MongoDB e PostgreSQL
- * em operações de busca.
+ * This benchmark compares the performance of MongoDB and PostgreSQL
+ * in search operations.
  */
 
 const { runBenchmark, compareResults, printResults } = require('../../core/utils/benchmark');
@@ -11,98 +11,98 @@ const mongo = require('./database/mongo');
 const postgres = require('./database/postgres');
 
 /**
- * Configurar ambiente do benchmark
- * @param {Object} options - Opções de configuração
+ * Set up benchmark environment
+ * @param {Object} options - Configuration options
  */
 async function setup(options = {}) {
   console.log('Setting up find benchmark environment...');
   
-  // Inicializar coleções/tabelas e inserir dados
+  // Initialize collections/tables and insert data
   await mongo.setup(options);
   await postgres.setup(options);
 }
 
 /**
- * Limpar ambiente do benchmark
- * @param {Object} options - Opções de configuração
+ * Clean up benchmark environment
+ * @param {Object} options - Configuration options
  */
 async function cleanup(options = {}) {
   console.log('Cleaning up find benchmark environment...');
   
-  // Limpar coleções/tabelas
+  // Clean collections/tables
   await mongo.cleanup(options);
   await postgres.cleanup(options);
 }
 
 /**
- * Executar benchmark de busca por ID no MongoDB
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run MongoDB find by ID benchmark
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function mongoFindById(options = {}) {
-  // Obter um ID aleatório ANTES de iniciar a medição do benchmark
-  // Isso garante que apenas a operação de busca real seja medida
+  // Get a random ID BEFORE starting the benchmark measurement
+  // This ensures that only the actual search operation is measured
   const randomId = options.randomUserId || await mongo.getRandomUserId();
   
-  // Buscar por ID (apenas esta operação será cronometrada)
+  // Find by ID (only this operation will be timed)
   const results = await mongo.findById(randomId);
   return { operation: 'find-by-id', results };
 }
 
 /**
- * Executar benchmark de busca por atributo no MongoDB
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run MongoDB find by attribute benchmark
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function mongoFindByAttribute(options = {}) {
-  // Obter um país aleatório ANTES de iniciar a medição do benchmark
-  // Isso garante que apenas a operação de busca real seja medida
+  // Get a random country BEFORE starting the benchmark measurement
+  // This ensures that only the actual search operation is measured
   const randomCountry = options.randomCountry || await mongo.getRandomCountry();
   
-  // Buscar por atributo (apenas esta operação será cronometrada)
+  // Find by attribute (only this operation will be timed)
   const results = await mongo.findByAttribute(randomCountry);
   return { operation: 'find-by-attribute', results };
 }
 
 /**
- * Executar benchmark de busca por ID no PostgreSQL
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run PostgreSQL find by ID benchmark
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function pgFindById(options = {}) {
-  // Obter um ID aleatório ANTES de iniciar a medição do benchmark
-  // Isso garante que apenas a operação de busca real seja medida
+  // Get a random ID BEFORE starting the benchmark measurement
+  // This ensures that only the actual search operation is measured
   const randomId = options.randomUserId || await postgres.getRandomUserId();
   
-  // Buscar por ID (apenas esta operação será cronometrada)
+  // Find by ID (only this operation will be timed)
   const results = await postgres.findById(randomId);
   return { operation: 'find-by-id', results };
 }
 
 /**
- * Executar benchmark de busca por atributo no PostgreSQL
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run PostgreSQL find by attribute benchmark
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function pgFindByAttribute(options = {}) {
-  // Obter um país aleatório ANTES de iniciar a medição do benchmark
-  // Isso garante que apenas a operação de busca real seja medida
+  // Get a random country BEFORE starting the benchmark measurement
+  // This ensures that only the actual search operation is measured
   const randomCountry = options.randomCountry || await postgres.getRandomCountry();
   
-  // Buscar por atributo (apenas esta operação será cronometrada)
+  // Find by attribute (only this operation will be timed)
   const results = await postgres.findByAttribute(randomCountry);
   return { operation: 'find-by-attribute', results };
 }
 
 /**
- * Executar todos os benchmarks de busca
- * @param {Object} options - Opções de configuração
- * @returns {Promise<Object>} - Resultados dos benchmarks
+ * Run all find benchmarks
+ * @param {Object} options - Configuration options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function run(options = {}) {
   console.log('=== Running Find Benchmarks ===');
   
-  // Número de iterações
+  // Number of iterations
   const iterations = options.iterations || 5;
   
   const results = {
@@ -121,10 +121,10 @@ async function run(options = {}) {
   // Benchmark de busca por ID
   console.log('\nRunning find by ID benchmark...');
   
-  // Preparar ID aleatório para MongoDB - isso mantém o mesmo ID para todas as iterações
+  // Prepare random ID for MongoDB - this keeps the same ID for all iterations
   const randomMongoUserId = await mongo.getRandomUserId();
   
-  // Preparar ID aleatório para PostgreSQL - isso mantém o mesmo ID para todas as iterações
+  // Prepare random ID for PostgreSQL - this keeps the same ID for all iterations
   const randomPgUserId = await postgres.getRandomUserId();
   
   const mongoFindByIdResults = await runBenchmark(
@@ -148,10 +148,10 @@ async function run(options = {}) {
   // Benchmark de busca por atributo
   console.log('\nRunning find by attribute benchmark...');
   
-  // Preparar país aleatório para MongoDB - isso mantém o mesmo país para todas as iterações
+  // Prepare random country for MongoDB - this keeps the same country for all iterations
   const randomMongoCountry = await mongo.getRandomCountry();
   
-  // Preparar país aleatório para PostgreSQL - isso mantém o mesmo país para todas as iterações
+  // Prepare random country for PostgreSQL - this keeps the same country for all iterations
   const randomPgCountry = await postgres.getRandomCountry();
   
   const mongoFindByAttributeResults = await runBenchmark(

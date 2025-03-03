@@ -189,21 +189,21 @@ function printResults(title, mongoResults, pgResults) {
     if (Math.abs(comparison.percentageDiff) < 5) {
       console.log(`\n${SYMBOLS.similar} ${chalk.bold('Result:')} ${chalk.gray('Similar performance (within 5%)')}`);
     } else {
-      // O sistema mais rápido é o que tem a mediana menor
-      // Se o MongoDB ganhou, ele é mais rápido (tem mediana menor)
-      // Se o PostgreSQL ganhou, ele é mais rápido (tem mediana menor)
+      // The faster system is the one with the lower median
+      // If MongoDB won, it's faster (has lower median)
+      // If PostgreSQL won, it's faster (has lower median)
       const winnerColor = comparison.winner === 'mongodb' ? chalk.yellow : chalk.cyan;
       
-      // Sempre mostrar o símbolo de mais rápido para o vencedor
+      // Always show the faster symbol for the winner
       const symbol = SYMBOLS.faster;
       
-      // Mostrar quanto o vencedor é mais rápido que o perdedor (em porcentagem)
+      // Show how much faster the winner is compared to the loser (in percentage)
       let fasterBy;
       if (comparison.winner === 'mongodb') {
-        // MongoDB é mais rápido - calcular quanto mais rápido (em %)
+        // MongoDB is faster - calculate how much faster (in %)
         fasterBy = ((pgResults.median - mongoResults.median) / pgResults.median * 100).toFixed(2);
       } else {
-        // PostgreSQL é mais rápido - calcular quanto mais rápido (em %)
+        // PostgreSQL is faster - calculate how much faster (in %)
         fasterBy = ((mongoResults.median - pgResults.median) / mongoResults.median * 100).toFixed(2);
       }
       

@@ -1,5 +1,5 @@
 /**
- * Utilitário para obter informações do ambiente de execução
+ * Utility for getting runtime environment information
  */
 
 const os = require('os');
@@ -8,8 +8,8 @@ const { promisify } = require('util');
 const execPromise = promisify(exec);
 
 /**
- * Obtém informações do ambiente de execução
- * @returns {Promise<Object>} Informações do ambiente
+ * Gets runtime environment information
+ * @returns {Promise<Object>} Environment information
  */
 async function getEnvironmentInfo() {
   const env = {
@@ -32,7 +32,7 @@ async function getEnvironmentInfo() {
     timestamp: new Date().toISOString()
   };
 
-  // Obter informações dos bancos de dados
+  // Get database information
   try {
     // MongoDB
     env.databases = {
@@ -49,8 +49,8 @@ async function getEnvironmentInfo() {
 }
 
 /**
- * Obtém a versão do MongoDB
- * @returns {Promise<Object>} Informações do MongoDB
+ * Gets MongoDB version
+ * @returns {Promise<Object>} MongoDB information
  */
 async function getMongoDBVersion() {
   try {
@@ -67,8 +67,8 @@ async function getMongoDBVersion() {
 }
 
 /**
- * Obtém a versão do PostgreSQL
- * @returns {Promise<Object>} Informações do PostgreSQL
+ * Gets PostgreSQL version
+ * @returns {Promise<Object>} PostgreSQL information
  */
 async function getPostgreSQLVersion() {
   try {
@@ -85,7 +85,7 @@ async function getPostgreSQLVersion() {
 }
 
 /**
- * Imprime informações do ambiente
+ * Prints environment information
  */
 async function printEnvironmentInfo() {
   const env = await getEnvironmentInfo();

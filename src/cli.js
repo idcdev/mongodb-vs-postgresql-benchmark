@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Interface de linha de comando para o sistema de benchmarks
+ * Command-line interface for the benchmark system
  */
 
 const { program } = require('commander');
@@ -41,11 +41,11 @@ program
   .option('--save', 'Save results to file', true)
   .action(async (benchmark, options) => {
     try {
-      // Mostrar informações do ambiente
+      // Show environment information
       console.log(chalk.blue('Environment information:'));
       await printEnvironmentInfo();
       
-      // Converter opções
+      // Convert options
       const benchmarkOptions = {
         size: options.size,
         iterations: parseInt(options.iterations),
@@ -57,17 +57,17 @@ program
       console.log(chalk.dim(`Options: ${JSON.stringify(benchmarkOptions, null, 2)}`));
       
       if (!benchmark) {
-        // Executar todos os benchmarks
+        // Run all benchmarks
         await runAllBenchmarks(benchmarkOptions);
       } else {
-        // Executar um benchmark específico
+        // Run a specific benchmark
         await runBenchmark(benchmark, benchmarkOptions);
       }
       
       console.log(chalk.green('\nBenchmark(s) completed successfully'));
       
-      // Forçar o encerramento do processo após a conclusão dos benchmarks
-      // Aumentando o tempo de espera para 2 segundos para permitir que as conexões sejam fechadas
+      // Force process exit after benchmark completion
+      // Increase wait time to 2 seconds to allow connections to close
       console.log(chalk.dim('Waiting for connections to close before exiting...'));
       setTimeout(() => {
         process.exit(0);

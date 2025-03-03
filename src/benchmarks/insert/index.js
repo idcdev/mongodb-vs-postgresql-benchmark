@@ -1,8 +1,8 @@
 /**
- * Benchmark de Inserção
+ * Insert Benchmark
  * 
- * Este benchmark compara a performance do MongoDB e PostgreSQL
- * em operações de inserção simples e em lote.
+ * This benchmark compares the performance of MongoDB and PostgreSQL
+ * in simple and batch insert operations.
  */
 
 const { runBenchmark, compareResults, printResults, saveResults } = require('../../core/utils/benchmark');
@@ -11,40 +11,40 @@ const mongo = require('./database/mongo');
 const postgres = require('./database/postgres');
 
 /**
- * Configurar ambiente do benchmark
- * @param {Object} options - Opções de configuração
+ * Set up benchmark environment
+ * @param {Object} options - Configuration options
  */
 async function setup(options = {}) {
   console.log('Setting up insert benchmark environment...');
   
-  // Inicializar coleções/tabelas
+  // Initialize collections/tables
   await mongo.setup(options);
   await postgres.setup(options);
 }
 
 /**
- * Limpar ambiente do benchmark
- * @param {Object} options - Opções de configuração
+ * Clean up benchmark environment
+ * @param {Object} options - Configuration options
  */
 async function cleanup(options = {}) {
   console.log('Cleaning up insert benchmark environment...');
   
-  // Limpar coleções/tabelas
+  // Clean collections/tables
   await mongo.cleanup(options);
   await postgres.cleanup(options);
 }
 
 /**
- * Executar benchmark de inserção única MongoDB
- * @param {number} count - Número de documentos
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run MongoDB single insert benchmark
+ * @param {number} count - Number of documents
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function mongoSingleInsert(count, options = {}) {
-  // Gerar usuários para o teste
+  // Generate users for the test
   const users = generateUsers(count);
   
-  // Inserir um por um
+  // Insert one by one
   for (const user of users) {
     await mongo.insertUser(user);
   }
@@ -53,32 +53,32 @@ async function mongoSingleInsert(count, options = {}) {
 }
 
 /**
- * Executar benchmark de inserção em lote MongoDB
- * @param {number} count - Número de documentos
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run MongoDB batch insert benchmark
+ * @param {number} count - Number of documents
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function mongoBatchInsert(count, options = {}) {
-  // Gerar usuários para o teste
+  // Generate users for the test
   const users = generateUsers(count);
   
-  // Inserir em lote
+  // Insert in batch
   await mongo.insertUsers(users);
   
   return { count, operation: 'batch-insert' };
 }
 
 /**
- * Executar benchmark de inserção única PostgreSQL
- * @param {number} count - Número de registros
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run PostgreSQL single insert benchmark
+ * @param {number} count - Number of records
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function pgSingleInsert(count, options = {}) {
-  // Gerar usuários para o teste
+  // Generate users for the test
   const users = generateUsers(count);
   
-  // Inserir um por um
+  // Insert one by one
   for (const user of users) {
     await postgres.insertUser(user);
   }
@@ -87,30 +87,30 @@ async function pgSingleInsert(count, options = {}) {
 }
 
 /**
- * Executar benchmark de inserção em lote PostgreSQL
- * @param {number} count - Número de registros
- * @param {Object} options - Opções adicionais
- * @returns {Promise<Object>} - Resultados do benchmark
+ * Run PostgreSQL batch insert benchmark
+ * @param {number} count - Number of records
+ * @param {Object} options - Additional options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function pgBatchInsert(count, options = {}) {
-  // Gerar usuários para o teste
+  // Generate users for the test
   const users = generateUsers(count);
   
-  // Inserir em lote
+  // Insert in batch
   await postgres.insertUsers(users);
   
   return { count, operation: 'batch-insert' };
 }
 
 /**
- * Executar todos os benchmarks de inserção
- * @param {Object} options - Opções de configuração
- * @returns {Promise<Object>} - Resultados dos benchmarks
+ * Run all insert benchmarks
+ * @param {Object} options - Configuration options
+ * @returns {Promise<Object>} - Benchmark results
  */
 async function run(options = {}) {
   console.log('=== Running Insert Benchmarks ===');
   
-  // Determinar o tamanho dos dados com base nas opções
+  // Determine data size based on options
   const dataSize = getDataSize(options.size || 'small');
   const iterations = options.iterations || 5;
   
@@ -127,7 +127,7 @@ async function run(options = {}) {
     }
   };
   
-  // Benchmark de inserção única
+  // Single insert benchmark
   console.log(`\nRunning single insert benchmark with ${dataSize} documents...`);
   
   const mongoSingleResults = await runBenchmark(
@@ -142,13 +142,13 @@ async function run(options = {}) {
     iterations
   );
   
-  // Salvar resultados de inserção única
+  // Save single insert results
   printResults('Single Insert Benchmark', mongoSingleResults, pgSingleResults);
   results.singleInsert.mongodb = mongoSingleResults;
   results.singleInsert.postgresql = pgSingleResults;
   results.singleInsert.comparison = compareResults(mongoSingleResults, pgSingleResults);
   
-  // Benchmark de inserção em lote
+  // Batch insert benchmark
   console.log(`\nRunning batch insert benchmark with ${dataSize} documents...`);
   
   const mongoBatchResults = await runBenchmark(
@@ -163,7 +163,7 @@ async function run(options = {}) {
     iterations
   );
   
-  // Salvar resultados de inserção em lote
+  // Save batch insert results
   printResults('Batch Insert Benchmark', mongoBatchResults, pgBatchResults);
   results.batchInsert.mongodb = mongoBatchResults;
   results.batchInsert.postgresql = pgBatchResults;
@@ -183,9 +183,9 @@ async function run(options = {}) {
 }
 
 /**
- * Obter tamanho de dados com base no nome
- * @param {string} size - Nome do tamanho (small, medium, large)
- * @returns {number} - Número de documentos
+ * Get data size based on name
+ * @param {string} size - Name of size (small, medium, large)
+ * @returns {number} - Number of documents
  */
 function getDataSize(size) {
   const sizes = {
