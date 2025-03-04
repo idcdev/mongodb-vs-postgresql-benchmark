@@ -2,7 +2,7 @@
   "name": "mongodb-vs-postgresql-benchmark",
   "version": "1.0.0",
   "description": "Performance benchmark comparison between MongoDB and PostgreSQL",
-  "main": "src/cli.js",
+  "main": "dist/cli.js",
   "scripts": {
     "start:db": "docker compose up -d",
     "stop:db": "docker compose down",
@@ -24,8 +24,15 @@
     "benchmark:small": "BENCHMARK_SIZE=small node src/core/run-all.js",
     "benchmark:medium": "BENCHMARK_SIZE=medium node src/core/run-all.js",
     "benchmark:large": "BENCHMARK_SIZE=large node src/core/run-all.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/cli.js"
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "ts-node src/cli.ts",
+    "clean": "rimraf dist",
+    "lint": "eslint --ext .ts src/",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "start": "node dist/cli.js"
   },
   "keywords": [
     "mongodb",
@@ -46,5 +53,14 @@
     "mongoose": "^8.11.0",
     "pg": "^8.13.3",
     "pg-promise": "^11.10.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.9",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.10",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }
