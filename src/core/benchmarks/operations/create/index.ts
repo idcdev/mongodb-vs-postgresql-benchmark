@@ -5,6 +5,6 @@
  */
 
 export * from './single-document-insertion.benchmark';
+export * from './batch-insertion.benchmark';
 // Future exports will be added here as they are implemented:
-// export * from './batch-insertion.benchmark';
 // export * from './validated-insertion.benchmark'; 
