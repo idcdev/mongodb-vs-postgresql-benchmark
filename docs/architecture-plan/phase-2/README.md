@@ -1,118 +1,118 @@
-# Fase 2: Benchmarks Padrão
+# Phase 2: Standard Benchmarks
 
-Este documento detalha o plano de implementação para a Fase 2 do projeto MongoDB vs PostgreSQL Benchmark.
+This document details the implementation plan for Phase 2 of the MongoDB vs PostgreSQL Benchmark project.
 
-## Visão Geral
+## Overview
 
-A Fase 2 se concentra na implementação de benchmarks padrão para operações comuns de banco de dados, fornecendo uma base sólida para comparações entre MongoDB e PostgreSQL. O objetivo é criar um conjunto abrangente de testes que cubram cenários de uso reais.
+Phase 2 focuses on implementing standard benchmarks for common database operations, providing a solid foundation for comparisons between MongoDB and PostgreSQL. The goal is to create a comprehensive set of tests that cover real-world usage scenarios.
 
-## Objetivos
+## Objectives
 
-1. Desenvolver benchmarks para operações CRUD básicas
-2. Implementar benchmarks para consultas complexas
-3. Criar benchmarks para operações em massa
-4. Testar operações de agregação e análise
-5. Comparar desempenho transacional
-6. Avaliar eficiência de indexação
+1. Develop benchmarks for basic CRUD operations
+2. Implement benchmarks for complex queries
+3. Create benchmarks for bulk operations
+4. Test aggregation and analysis operations
+5. Compare transactional performance
+6. Evaluate indexing efficiency
 
-## Plano de Implementação
+## Implementation Plan
 
-### 2.1 Benchmarks de Operações Básicas
+### 2.1 Basic Operations Benchmarks
 
-#### 2.1.1 Operações de Criação
-- [ ] Inserção de documento/registro único
-- [ ] Inserção em lote (batch)
-- [ ] Inserção com validação
+#### 2.1.1 Creation Operations
+- [ ] Single document/record insertion
+- [ ] Batch insertion
+- [ ] Validated insertion
 
-#### 2.1.2 Operações de Leitura
-- [ ] Leitura por ID
-- [ ] Leitura por campo único
-- [ ] Consulta com múltiplos critérios
-- [ ] Paginação de resultados
+#### 2.1.2 Read Operations
+- [ ] Read by ID
+- [ ] Read by single field
+- [ ] Query with multiple criteria
+- [ ] Result pagination
 
-#### 2.1.3 Operações de Atualização
-- [ ] Atualização de documento/registro único
-- [ ] Atualização em lote
-- [ ] Atualizações parciais (campos específicos)
+#### 2.1.3 Update Operations
+- [ ] Single document/record update
+- [ ] Batch update
+- [ ] Partial updates (specific fields)
 
-#### 2.1.4 Operações de Exclusão
-- [ ] Exclusão por ID
-- [ ] Exclusão em lote
-- [ ] Exclusão condicional
+#### 2.1.4 Delete Operations
+- [ ] Delete by ID
+- [ ] Batch delete
+- [ ] Conditional delete
 
-### 2.2 Benchmarks de Consultas Complexas
+### 2.2 Complex Query Benchmarks
 
-#### 2.2.1 Filtragem Avançada
-- [ ] Consultas com expressões regulares
-- [ ] Consultas com operadores lógicos complexos
-- [ ] Filtragem por valores em arrays/conjuntos
+#### 2.2.1 Advanced Filtering
+- [ ] Regular expression queries
+- [ ] Complex logical operators
+- [ ] Array/set value filtering
 
-#### 2.2.2 Ordenação e Limitação
-- [ ] Ordenação por múltiplos campos
-- [ ] Combinação de ordenação, skip e limit
-- [ ] Ordenação com índices compostos
+#### 2.2.2 Sorting and Limiting
+- [ ] Multi-field sorting
+- [ ] Sort, skip, and limit combinations
+- [ ] Sorting with composite indexes
 
-#### 2.2.3 Projeções
-- [ ] Seleção de campos específicos
-- [ ] Exclusão de campos específicos
-- [ ] Transformações de dados na consulta
+#### 2.2.3 Projections
+- [ ] Specific field selection
+- [ ] Specific field exclusion
+- [ ] Query-time data transformations
 
-### 2.3 Benchmarks de Operações em Massa
+### 2.3 Bulk Operations Benchmarks
 
-#### 2.3.1 Carregamento de Dados
-- [ ] Importação de conjuntos de dados grandes
-- [ ] Estratégias de inserção em massa
-- [ ] Verificação de integridade
+#### 2.3.1 Data Loading
+- [ ] Large dataset import
+- [ ] Bulk insertion strategies
+- [ ] Integrity verification
 
-#### 2.3.2 Processamento em Lote
-- [ ] Atualização de múltiplos documentos/registros
-- [ ] Exclusão de múltiplos documentos/registros
-- [ ] Operações mistas (upserts)
+#### 2.3.2 Batch Processing
+- [ ] Multiple document/record updates
+- [ ] Multiple document/record deletions
+- [ ] Mixed operations (upserts)
 
-### 2.4 Benchmarks de Agregação
+### 2.4 Aggregation Benchmarks
 
-#### 2.4.1 Operações de Grupo
-- [ ] Agrupamento por campo único
-- [ ] Agrupamento por múltiplos campos
-- [ ] Funções de agregação (sum, avg, min, max)
+#### 2.4.1 Group Operations
+- [ ] Single field grouping
+- [ ] Multi-field grouping
+- [ ] Aggregation functions (sum, avg, min, max)
 
-#### 2.4.2 Pipeline de Agregação
-- [ ] Pipeline simples (filtro + grupo)
-- [ ] Pipeline completo (múltiplos estágios)
-- [ ] Uso de operadores de agregação avançados
+#### 2.4.2 Aggregation Pipeline
+- [ ] Simple pipeline (filter + group)
+- [ ] Full pipeline (multiple stages)
+- [ ] Advanced aggregation operators
 
 #### 2.4.3 Joins/Lookups
-- [ ] Consultas relacionais simples
-- [ ] Consultas com múltiplas junções
-- [ ] Desempenho de junções com e sem índices
+- [ ] Simple relational queries
+- [ ] Multi-join queries
+- [ ] Join performance with and without indexes
 
-### 2.5 Benchmarks Transacionais
+### 2.5 Transactional Benchmarks
 
-#### 2.5.1 Transações Simples
-- [ ] Operações CRUD em uma única transação
-- [ ] Confirmação (commit) e cancelamento (rollback)
-- [ ] Isolamento transacional
+#### 2.5.1 Simple Transactions
+- [ ] CRUD operations in a single transaction
+- [ ] Commit and rollback
+- [ ] Transactional isolation
 
-#### 2.5.2 Concorrência
-- [ ] Acesso concorrente a recursos
-- [ ] Bloqueios e deadlocks
-- [ ] Estratégias de resolução de conflitos
+#### 2.5.2 Concurrency
+- [ ] Concurrent resource access
+- [ ] Locks and deadlocks
+- [ ] Conflict resolution strategies
 
-### 2.6 Benchmarks de Indexação
+### 2.6 Indexing Benchmarks
 
-#### 2.6.1 Tipos de Índice
-- [ ] Índices simples
-- [ ] Índices compostos
-- [ ] Índices especializados (texto, geoespacial)
+#### 2.6.1 Index Types
+- [ ] Simple indexes
+- [ ] Composite indexes
+- [ ] Specialized indexes (text, geospatial)
 
-#### 2.6.2 Desempenho de Índices
-- [ ] Consultas com e sem índices
-- [ ] Impacto de índices em operações de escrita
-- [ ] Estratégias de indexação otimizadas
+#### 2.6.2 Index Performance
+- [ ] Queries with and without indexes
+- [ ] Index impact on write operations
+- [ ] Optimized indexing strategies
 
-## Estrutura dos Benchmarks
+## Benchmark Structure
 
-Cada benchmark será implementado seguindo uma estrutura consistente:
+Each benchmark will be implemented following a consistent structure:
 
 ```typescript
 import { BaseBenchmark } from '../core/domain/model/base-benchmark';
@@ -125,52 +125,52 @@ export class OperationNameBenchmark extends BaseBenchmark {
   }
 
   async setup(adapter: DatabaseAdapter): Promise<void> {
-    // Preparação do ambiente
+    // Environment preparation
   }
 
   async execute(adapter: DatabaseAdapter): Promise<void> {
-    // Execução da operação a ser medida
+    // Execution of the operation to be measured
   }
 
   async teardown(adapter: DatabaseAdapter): Promise<void> {
-    // Limpeza após o benchmark
+    // Cleanup after the benchmark
   }
 }
 ```
 
-## Parâmetros de Benchmark
+## Benchmark Parameters
 
-Para garantir comparações justas entre MongoDB e PostgreSQL, cada benchmark usará parâmetros configuráveis:
+To ensure fair comparisons between MongoDB and PostgreSQL, each benchmark will use configurable parameters:
 
-- Tamanho do conjunto de dados
-- Complexidade dos documentos/registros
-- Número de repetições
-- Configurações de paralelismo
-- Opções específicas de banco de dados
+- Dataset size
+- Document/record complexity
+- Number of repetitions
+- Parallelism settings
+- Database-specific options
 
-## Resultados Esperados
+## Expected Results
 
-Cada benchmark produzirá resultados padronizados incluindo:
+Each benchmark will produce standardized results including:
 
-- Tempo médio de execução
-- Throughput (operações por segundo)
-- Utilização de recursos (CPU, memória, I/O)
-- Comparações diretas entre MongoDB e PostgreSQL
+- Average execution time
+- Throughput (operations per second)
+- Resource utilization (CPU, memory, I/O)
+- Direct comparisons between MongoDB and PostgreSQL
 
-## Casos de Teste
+## Test Cases
 
-Para validar a precisão e reprodutibilidade dos benchmarks, serão implementados testes para:
+To validate the accuracy and reproducibility of benchmarks, tests will be implemented for:
 
-- Exatidão dos resultados
-- Consistência em múltiplas execuções
-- Comportamento sob diferentes cargas
-- Comparabilidade entre bancos de dados
+- Result accuracy
+- Consistency across multiple executions
+- Behavior under different loads
+- Comparability between databases
 
-## Próximos Passos
+## Next Steps
 
-1. Implementar benchmarks de operações básicas (CRUD)
-2. Desenvolver benchmarks para consultas complexas
-3. Criar benchmarks para operações em massa
-4. Implementar benchmarks de agregação
-5. Adicionar benchmarks transacionais
-6. Desenvolver benchmarks de indexação 
+1. Implement basic operation benchmarks (CRUD)
+2. Develop benchmarks for complex queries
+3. Create benchmarks for bulk operations
+4. Implement aggregation benchmarks
+5. Add transactional benchmarks
+6. Develop indexing benchmarks 
