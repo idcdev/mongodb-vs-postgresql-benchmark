@@ -7,7 +7,7 @@
 
 import { BaseBenchmark } from '../../../domain/model/base-benchmark';
 import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
-import { BenchmarkResult, DatabaseBenchmarkResult, EnvironmentInfo } from '../../../domain/model/benchmark-result';
+import { BenchmarkResult, DatabaseBenchmarkResult } from '../../../domain/model/benchmark-result';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
 
 // Document structure for the benchmark
@@ -38,8 +38,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   constructor() {
     super(
       'Single Document Insertion',
-      'Measures the performance of inserting individual documents/records',
-      [DatabaseType.MONGODB, DatabaseType.POSTGRESQL]
+      'Measures the performance of inserting individual documents/records'
     );
   }
   
@@ -48,19 +47,27 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
    */
   public async setup(options: BenchmarkOptions): Promise<void> {
     // Generate test data based on the benchmark size
-    const count = this.getDocumentCount(options.size);
+    const count = this.getDataSize(options.size, options.customSize);
     this.testDocuments = this.generateTestData(count);
     
-    // Setup MongoDB
+    // Setup for MongoDB
     if (options.databaseOptions?.mongodb) {
-      const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
-      await this.setupDatabase(mongoAdapter);
+      try {
+        const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
+        await this.setupDatabase(mongoAdapter);
+      } catch (error) {
+        console.error('Error setting up MongoDB:', error);
+      }
     }
     
-    // Setup PostgreSQL
+    // Setup for PostgreSQL
     if (options.databaseOptions?.postgresql) {
-      const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
-      await this.setupDatabase(postgresAdapter);
+      try {
+        const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
+        await this.setupDatabase(postgresAdapter);
+      } catch (error) {
+        console.error('Error setting up PostgreSQL:', error);
+      }
     }
   }
   
@@ -72,7 +79,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
       name: this.getName(),
       description: this.getDescription(),
       timestamp: new Date().toISOString(),
-      environment: this.getEnvironmentInfo()
+      environment: this.getSystemInfo()
     };
     
     // Run for MongoDB if configured
@@ -87,22 +94,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     
     // Generate comparison if both databases were benchmarked
     if (result.mongodb && result.postgresql) {
-      const mongoTime = result.mongodb.summary.totalDurationMs;
-      const postgresTime = result.postgresql.summary.totalDurationMs;
-      
-      const fasterDb = mongoTime < postgresTime ? DatabaseType.MONGODB : DatabaseType.POSTGRESQL;
-      const slowerDb = fasterDb === DatabaseType.MONGODB ? DatabaseType.POSTGRESQL : DatabaseType.MONGODB;
-      const fasterTime = fasterDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
-      const slowerTime = slowerDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
-      
-      const percentageDifference = ((slowerTime - fasterTime) / slowerTime) * 100;
-      
-      result.comparison = {
-        fasterDatabase: fasterDb,
-        slowerDatabase: slowerDb,
-        percentageDifference,
-        absoluteDifferenceMs: slowerTime - fasterTime
-      };
+      this.generateComparison(result);
     }
     
     return result;
@@ -114,14 +106,22 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   public async cleanup(options: BenchmarkOptions): Promise<void> {
     // Clean up MongoDB
     if (options.databaseOptions?.mongodb) {
-      const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
-      await this.cleanupDatabase(mongoAdapter);
+      try {
+        const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
+        await this.cleanupDatabase(mongoAdapter);
+      } catch (error) {
+        console.error('Error cleaning up MongoDB:', error);
+      }
     }
     
     // Clean up PostgreSQL
     if (options.databaseOptions?.postgresql) {
-      const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
-      await this.cleanupDatabase(postgresAdapter);
+      try {
+        const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
+        await this.cleanupDatabase(postgresAdapter);
+      } catch (error) {
+        console.error('Error cleaning up PostgreSQL:', error);
+      }
     }
     
     // Clear test data
@@ -147,7 +147,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     
     // Run the benchmark for the specified number of iterations
     for (let i = 0; i < iterations; i++) {
-      const { durationMs, metrics } = await this.executeInsertion(
+      const { durationMs } = await this.executeInsertion(
         adapter,
         databaseType,
         options
@@ -161,22 +161,18 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     
     return {
       databaseType,
-      summary: {
-        totalDurationMs: durations.reduce((sum, duration) => sum + duration, 0),
-        averageDurationMs: stats.mean,
-        minDurationMs: stats.min,
-        maxDurationMs: stats.max,
-        medianDurationMs: stats.median,
-        standardDeviation: stats.stdDev
-      },
+      operationCount: this.testDocuments.length * iterations,
       iterations: durations.map((duration, index) => ({
         iteration: index + 1,
         durationMs: duration
       })),
-      metadata: {
-        documentCount: this.testDocuments.length,
-        operationsPerSecond: 1000 / stats.mean
-      }
+      totalDurationMs: durations.reduce((sum, duration) => sum + duration, 0),
+      averageDurationMs: stats.mean,
+      minDurationMs: stats.min,
+      maxDurationMs: stats.max,
+      medianDurationMs: stats.median,
+      standardDeviation: stats.stdDev,
+      operationsPerSecond: 1000 / stats.mean
     };
   }
   
@@ -187,8 +183,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     adapter: DatabaseAdapter,
     databaseType: DatabaseType,
     options: BenchmarkOptions
-  ): Promise<{ durationMs: number, metrics: any }> {
-    const metrics: any = {};
+  ): Promise<{ durationMs: number }> {
     const startTime = Date.now();
     
     // Insert each document individually
@@ -200,7 +195,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     const endTime = Date.now();
     const durationMs = endTime - startTime;
     
-    return { durationMs, metrics };
+    return { durationMs };
   }
   
   /**
@@ -250,18 +245,18 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   /**
    * Get the number of documents to use based on the benchmark size
    */
-  private getDocumentCount(size: DataSize): number {
+  private getDataSize(size: DataSize | string, customSize?: number): number {
+    if (size === DataSize.CUSTOM && customSize) {
+      return customSize;
+    }
+    
     switch (size) {
-      case DataSize.TINY:
-        return 10;
       case DataSize.SMALL:
         return 100;
       case DataSize.MEDIUM:
         return 1000;
       case DataSize.LARGE:
         return 10000;
-      case DataSize.HUGE:
-        return 100000;
       default:
         return 100; // Default to small
     }
@@ -277,8 +272,10 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     }
     
     // Drop the collection if it exists
-    if (await adapter.collectionExists(this.collectionName)) {
+    try {
       await adapter.dropCollection(this.collectionName);
+    } catch (error) {
+      // Collection might not exist yet
     }
     
     // Create the collection
@@ -295,22 +292,11 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     }
     
     // Drop the collection
-    if (await adapter.collectionExists(this.collectionName)) {
+    try {
       await adapter.dropCollection(this.collectionName);
+    } catch (error) {
+      // Collection might not exist
     }
-  }
-  
-  /**
-   * Get the environment information
-   */
-  private getEnvironmentInfo(): EnvironmentInfo {
-    return {
-      nodeVersion: process.version,
-      platform: process.platform,
-      cpuCores: require('os').cpus().length,
-      totalMemory: require('os').totalmem(),
-      freeMemory: require('os').freemem()
-    };
   }
   
   /**
@@ -342,10 +328,50 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   }
   
   /**
+   * Get system information for the benchmark environment
+   */
+  private getSystemInfo(): any {
+    return {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+      cpuCount: require('os').cpus().length,
+      memoryTotal: Math.round(require('os').totalmem() / (1024 * 1024 * 1024)) + 'GB',
+      memoryFree: Math.round(require('os').freemem() / (1024 * 1024 * 1024)) + 'GB'
+    };
+  }
+  
+  /**
+   * Generate comparison between MongoDB and PostgreSQL results
+   */
+  private generateComparison(result: BenchmarkResult): void {
+    if (!result.mongodb || !result.postgresql) {
+      return;
+    }
+    
+    const mongoTime = result.mongodb.averageDurationMs;
+    const postgresTime = result.postgresql.averageDurationMs;
+    
+    const fasterDb = mongoTime < postgresTime ? DatabaseType.MONGODB : DatabaseType.POSTGRESQL;
+    const slowerDb = fasterDb === DatabaseType.MONGODB ? DatabaseType.POSTGRESQL : DatabaseType.MONGODB;
+    const fasterTime = fasterDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
+    const slowerTime = slowerDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
+    
+    const percentageDifference = ((slowerTime - fasterTime) / slowerTime) * 100;
+    
+    result.comparison = {
+      faster: fasterDb,
+      slower: slowerDb,
+      percentFaster: percentageDifference,
+      timeDifference: slowerTime - fasterTime
+    };
+  }
+  
+  /**
    * Get a database adapter
    */
   private async getAdapter(databaseType: DatabaseType): Promise<DatabaseAdapter> {
-    // In a real implementation, this would get the adapter from a factory or DI container
+    // This will be implemented by the benchmark service in real usage
     throw new Error('Database adapter factory not implemented');
   }
   

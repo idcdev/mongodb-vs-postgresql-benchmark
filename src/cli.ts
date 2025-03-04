@@ -13,7 +13,7 @@ import { DatabaseType } from './core/domain/interfaces/database-adapter.interfac
 import { DataSize } from './core/domain/model/benchmark-options';
 import { MongoDBAdapter } from './core/application/database/mongodb-adapter';
 import { PostgreSQLAdapter } from './core/application/database/postgresql-adapter';
-import { registerAllBenchmarks, benchmarks } from './core/benchmarks';
+import { registerAllBenchmarks } from './core/benchmarks';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
