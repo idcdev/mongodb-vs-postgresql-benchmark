@@ -33,4 +33,7 @@ export * from './validation-service.interface';
 export * from './storage-service.interface';
 
 // Report interfaces
-export * from './report-service.interface'; 
+export * from './report-service.interface';
+
+// CLI interfaces
+export * from './cli-handler.interface'; 
