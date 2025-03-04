@@ -5,11 +5,8 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
-import { promisify } from 'util';
-
 import { DefaultReportService } from './default-report-service';
-import { ReportFormat, ReportOptions } from '../../domain/interfaces/report-service.interface';
+import { ReportFormat } from '../../domain/interfaces/report-service.interface';
 import { BenchmarkResult, DatabaseBenchmarkResult } from '../../domain/model/benchmark-result';
 import { DatabaseType } from '../../domain/interfaces/database-adapter.interface';
 
@@ -17,8 +14,8 @@ import { DatabaseType } from '../../domain/interfaces/database-adapter.interface
 jest.mock('fs', () => ({
   existsSync: jest.fn(),
   promises: {
-    mkdir: jest.fn(),
-    writeFile: jest.fn()
+    mkdir: jest.fn().mockResolvedValue(undefined),
+    writeFile: jest.fn().mockResolvedValue(undefined)
   }
 }));
 

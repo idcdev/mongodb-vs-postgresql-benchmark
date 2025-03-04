@@ -7,7 +7,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { promisify } from 'util';
 
 import { 
   ReportService, 
@@ -15,10 +14,6 @@ import {
   ReportFormat 
 } from '../../domain/interfaces/report-service.interface';
 import { BenchmarkResult } from '../../domain/model/benchmark-result';
-
-// Promisify fs methods
-const writeFile = promisify(fs.writeFile);
-const mkdir = promisify(fs.mkdir);
 
 /**
  * Default implementation of the Report Service
@@ -98,11 +93,11 @@ export class DefaultReportService implements ReportService {
     try {
       // Create directory if it doesn't exist
       if (!fs.existsSync(directory)) {
-        await mkdir(directory, { recursive: true });
+        await fs.promises.mkdir(directory, { recursive: true });
       }
       
       // Write the report to the file
-      await writeFile(filePath, content, 'utf8');
+      await fs.promises.writeFile(filePath, content, 'utf8');
     } catch (error: any) {
       throw new Error(`Failed to save report: ${error.message}`);
     }
@@ -235,10 +230,10 @@ export class DefaultReportService implements ReportService {
    * Generate a CSV comparison report
    * 
    * @param results - The benchmark results
-   * @param options - Report options
+   * @param options - Report options (unused in this implementation)
    * @returns CSV formatted comparison report
    */
-  private generateCsvComparisonReport(results: BenchmarkResult[], options: ReportOptions): string {
+  private generateCsvComparisonReport(results: BenchmarkResult[], _options: ReportOptions): string {
     const lines: string[] = [];
     
     // Add header
