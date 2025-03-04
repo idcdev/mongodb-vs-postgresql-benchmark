@@ -1,0 +1,46 @@
+{
+  "app": {
+    "name": "mongo-x-postgres",
+    "version": "1.0.0",
+    "environment": "development"
+  },
+  "databases": {
+    "mongodb": {
+      "host": "localhost",
+      "port": 27017,
+      "username": "",
+      "password": "",
+      "database": "benchmark"
+    },
+    "postgres": {
+      "host": "localhost",
+      "port": 5432,
+      "username": "postgres",
+      "password": "postgres",
+      "database": "benchmark"
+    }
+  },
+  "benchmark": {
+    "iterations": 5,
+    "warmupIterations": 1,
+    "concurrency": 1,
+    "dataSize": "small",
+    "timeout": 60000,
+    "operations": [
+      "insert",
+      "find",
+      "update",
+      "delete"
+    ],
+    "outputPath": "./results",
+    "report": {
+      "format": "json",
+      "saveToFile": true
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "text",
+    "file": null
+  }
+} 
