@@ -6,5 +6,7 @@
 
 export * from './single-document-insertion.benchmark';
 export * from './batch-insertion.benchmark';
+export * from './validated-insertion.benchmark';
 // Future exports will be added here as they are implemented:
-// export * from './validated-insertion.benchmark'; 
+// export * from './schema-based-insertion.benchmark';
+// export * from './document-with-relationships.benchmark'; 
