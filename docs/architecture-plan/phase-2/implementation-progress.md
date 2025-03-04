@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Progress**: 15% Complete
+**Progress**: 20% Complete
 
 The implementation of Phase 2 is focused on creating a comprehensive suite of standard benchmarks for MongoDB and PostgreSQL. This phase builds on the architectural foundation established in Phase 1.
 
@@ -15,7 +15,7 @@ The implementation of Phase 2 is focused on creating a comprehensive suite of st
 | Single Document Insertion | ✅ Completed | 100% | Includes performance metrics for individual document insertion |
 | Batch Insertion | ✅ Completed | 100% | Tests different batch sizes for optimal performance |
 | Validated Insertion | ✅ Completed | 100% | Tests performance with document validation rules |
-| Single Document Query | 📝 Planned | 0% | |
+| Single Document Query | ✅ Completed | 100% | Tests performance of querying documents by ID |
 | Multiple Document Query | 📝 Planned | 0% | |
 | Document Update | 📝 Planned | 0% | |
 | Document Deletion | 📝 Planned | 0% | |
@@ -67,23 +67,24 @@ The implementation of Phase 2 is focused on creating a comprehensive suite of st
 
 ## Test Coverage
 
-Total Test Coverage: 15%
+Total Test Coverage: 20%
 
 The following benchmarks have comprehensive test suites:
 - `SingleDocumentInsertionBenchmark`: Unit tests cover all main functionality
 - `BatchInsertionBenchmark`: Unit tests cover all main functionality
 - `ValidatedInsertionBenchmark`: Unit tests cover all main functionality
+- `SingleDocumentQueryBenchmark`: Unit tests cover all main functionality
 
 ## Project Metrics
 
-- Implemented Benchmarks: 3 of 25 (12%)
-- Lines of Code: ~1,200
-- Number of Tests: 35
+- Implemented Benchmarks: 4 of 25 (16%)
+- Lines of Code: ~1,700
+- Number of Tests: 50+
 
 ## Next Steps
 
-1. Implement the `SingleDocumentQueryBenchmark` for read operations
-2. Begin implementing more complex read operation benchmarks
+1. Implement the `MultipleDocumentQueryBenchmark` for querying multiple records
+2. Implement `FilteredQueryBenchmark` for more complex query operations
 3. Integrate the benchmarks with the `BenchmarkService`
 4. Create integration tests with actual MongoDB and PostgreSQL databases
 
@@ -97,5 +98,6 @@ The following benchmarks have comprehensive test suites:
 
 **2024-03-11**:
 - Implemented `ValidatedInsertionBenchmark` with tests
+- Implemented `SingleDocumentQueryBenchmark` with tests
 - Updated benchmark exports and directory structure
-- Prepared for implementation of read operation benchmarks 
+- Added support for read operation benchmarks 

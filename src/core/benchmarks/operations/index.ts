@@ -1,12 +1,12 @@
 /**
- * Database Operation Benchmarks
- * 
- * This file exports all benchmarks related to database operations.
+ * Export all benchmarks related to database operations
  */
 
-// Export operation benchmark modules
-// Only export the create operations for now, as we implement more, we'll uncomment the others
+// Export operations by category
 export * from './create';
-// export * from './read';
+export * from './read';
+
+// Future exports:
 // export * from './update';
-// export * from './delete'; 
+// export * from './delete';
+// export * from './bulk'; 
