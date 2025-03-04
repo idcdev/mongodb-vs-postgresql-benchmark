@@ -25,6 +25,12 @@ module.exports = {
       functions: 70,
       lines: 70,
       statements: 70
+    },
+    './src/core/application/events/': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
     }
   }
 }; 
