@@ -7,7 +7,7 @@
 
 import { BaseBenchmark } from '../../../domain/model/base-benchmark';
 import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
-import { BenchmarkResult, DatabaseBenchmarkResult } from '../../../domain/model/benchmark-result';
+import { BenchmarkResult, DatabaseBenchmarkResult, BenchmarkComparison } from '../../../domain/model/benchmark-result';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
 
 // Document structure for the benchmark
@@ -32,6 +32,10 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   // Test data for the benchmark
   private testDocuments: TestDocument[] = [];
   
+  private mongoAdapter: DatabaseAdapter | null = null;
+  private postgresAdapter: DatabaseAdapter | null = null;
+  private documentSize: number = 0;
+  
   /**
    * Constructor
    */
@@ -47,14 +51,13 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
    */
   public async setup(options: BenchmarkOptions): Promise<void> {
     // Generate test data based on the benchmark size
-    const count = this.getDataSize(options.size, options.customSize);
-    this.testDocuments = this.generateTestData(count);
+    await this.generateTestData(options.size, options.customSize);
     
     // Setup for MongoDB
     if (options.databaseOptions?.mongodb) {
       try {
-        const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
-        await this.setupDatabase(mongoAdapter);
+        this.mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
+        await this.setupDatabase(this.mongoAdapter);
       } catch (error) {
         console.error('Error setting up MongoDB:', error);
       }
@@ -63,8 +66,8 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     // Setup for PostgreSQL
     if (options.databaseOptions?.postgresql) {
       try {
-        const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
-        await this.setupDatabase(postgresAdapter);
+        this.postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
+        await this.setupDatabase(this.postgresAdapter);
       } catch (error) {
         console.error('Error setting up PostgreSQL:', error);
       }
@@ -107,8 +110,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     // Clean up MongoDB
     if (options.databaseOptions?.mongodb) {
       try {
-        const mongoAdapter = await this.getAdapter(DatabaseType.MONGODB);
-        await this.cleanupDatabase(mongoAdapter);
+        await this.cleanupDatabase(this.mongoAdapter);
       } catch (error) {
         console.error('Error cleaning up MongoDB:', error);
       }
@@ -117,8 +119,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     // Clean up PostgreSQL
     if (options.databaseOptions?.postgresql) {
       try {
-        const postgresAdapter = await this.getAdapter(DatabaseType.POSTGRESQL);
-        await this.cleanupDatabase(postgresAdapter);
+        await this.cleanupDatabase(this.postgresAdapter);
       } catch (error) {
         console.error('Error cleaning up PostgreSQL:', error);
       }
@@ -161,18 +162,25 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
     
     return {
       databaseType,
-      operationCount: this.testDocuments.length * iterations,
+      durations,
       iterations: durations.map((duration, index) => ({
         iteration: index + 1,
         durationMs: duration
       })),
-      totalDurationMs: durations.reduce((sum, duration) => sum + duration, 0),
-      averageDurationMs: stats.mean,
-      minDurationMs: stats.min,
-      maxDurationMs: stats.max,
-      medianDurationMs: stats.median,
-      standardDeviation: stats.stdDev,
-      operationsPerSecond: 1000 / stats.mean
+      statistics: {
+        minDurationMs: Math.min(...durations),
+        maxDurationMs: Math.max(...durations),
+        meanDurationMs: stats.mean,
+        medianDurationMs: stats.median,
+        stdDevDurationMs: stats.stdDev,
+      },
+      operation: {
+        type: 'single-document-insertion',
+        count: this.testDocuments.length * iterations,
+        metadata: {
+          documentSize: this.documentSize
+        }
+      }
     };
   }
   
@@ -224,28 +232,25 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
   /**
    * Generate test data for the benchmark
    */
-  private generateTestData(count: number): TestDocument[] {
-    const documents: TestDocument[] = [];
+  private async generateTestData(size: DataSize | string, customSize?: number): Promise<void> {
+    const count = this.getDataSize(size, customSize);
+    this.testDocuments = [];
     
     for (let i = 0; i < count; i++) {
-      documents.push({
-        username: `user${i}`,
-        email: `user${i}@example.com`,
-        firstName: `First${i}`,
-        lastName: `Last${i}`,
-        age: 20 + (i % 50), // Ages between 20 and 69
-        active: i % 3 === 0, // 1/3 of users are active
-        createdAt: new Date()
-      });
+      this.testDocuments.push(generateTestDocument());
     }
     
-    return documents;
+    // Calculate average document size
+    if (this.testDocuments.length > 0) {
+      const sampleJson = JSON.stringify(this.testDocuments[0]);
+      this.documentSize = sampleJson.length;
+    }
   }
   
   /**
    * Get the number of documents to use based on the benchmark size
    */
-  private getDataSize(size: DataSize | string, customSize?: number): number {
+  protected getDataSize(size: DataSize | string, customSize?: number): number {
     if (size === DataSize.CUSTOM && customSize) {
       return customSize;
     }
@@ -349,22 +354,20 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
       return;
     }
     
-    const mongoTime = result.mongodb.averageDurationMs;
-    const postgresTime = result.postgresql.averageDurationMs;
-    
-    const fasterDb = mongoTime < postgresTime ? DatabaseType.MONGODB : DatabaseType.POSTGRESQL;
-    const slowerDb = fasterDb === DatabaseType.MONGODB ? DatabaseType.POSTGRESQL : DatabaseType.MONGODB;
-    const fasterTime = fasterDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
-    const slowerTime = slowerDb === DatabaseType.MONGODB ? mongoTime : postgresTime;
-    
-    const percentageDifference = ((slowerTime - fasterTime) / slowerTime) * 100;
-    
-    result.comparison = {
-      faster: fasterDb,
-      slower: slowerDb,
-      percentFaster: percentageDifference,
-      timeDifference: slowerTime - fasterTime
+    const comparison: BenchmarkComparison = {
+      meanDiffMs: result.postgresql.statistics.meanDurationMs - result.mongodb.statistics.meanDurationMs,
+      medianDiffMs: result.postgresql.statistics.medianDurationMs - result.mongodb.statistics.medianDurationMs,
+      medianRatio: result.postgresql.statistics.medianDurationMs / result.mongodb.statistics.medianDurationMs,
+      percentageDiff: this.calculatePercentageDifference(
+        result.mongodb.statistics.medianDurationMs,
+        result.postgresql.statistics.medianDurationMs
+      ),
+      winner: result.postgresql.statistics.medianDurationMs > result.mongodb.statistics.medianDurationMs
+        ? DatabaseType.MONGODB
+        : DatabaseType.POSTGRESQL
     };
+    
+    result.comparison = comparison;
   }
   
   /**
@@ -391,5 +394,12 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
         postgresql: {}
       }
     };
+  }
+  
+  /**
+   * Calculate percentage difference between two values
+   */
+  private calculatePercentageDifference(value1: number, value2: number): number {
+    return ((value2 - value1) / value1) * 100;
   }
 } 
