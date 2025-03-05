@@ -82,9 +82,9 @@ npm run cli info
 npm run cli run <benchmark-name>
 
 # Examples:
-npm run cli run SingleDocumentInsertion
-npm run cli run BatchInsertion
-npm run cli run SingleDocumentQuery
+npm run cli run "Single Document Insertion"
+npm run cli run batch-insertion
+npm run cli run single-document-query
 ```
 
 ### Run All Benchmarks
@@ -142,13 +142,13 @@ npm run cli run [benchmark] [options]
 
 ```bash
 # Run the SingleDocumentInsertion benchmark with medium data size
-npm run cli run SingleDocumentInsertion --size=medium 
+npm run cli run "Single Document Insertion" --size=medium 
 
 # Run all benchmarks with large data size
 npm run cli run all --size=large
 
 # Run SingleDocumentQuery benchmark and skip cleanup
-npm run cli run SingleDocumentQuery --skip-cleanup
+npm run cli run single-document-query --skip-cleanup
 ```
 
 ## Database Management

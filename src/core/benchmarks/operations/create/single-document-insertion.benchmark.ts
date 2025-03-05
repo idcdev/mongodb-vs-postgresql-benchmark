@@ -57,7 +57,7 @@ export class SingleDocumentInsertionBenchmark extends BaseBenchmark {
    */
   constructor() {
     super(
-      'Single Document Insertion',
+      'single-document-insertion',
       'Measures the performance of inserting individual documents/records'
     );
   }
