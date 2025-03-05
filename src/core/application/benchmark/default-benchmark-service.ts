@@ -348,10 +348,22 @@ export class DefaultBenchmarkService implements BenchmarkService {
       
       const filePath = path.join(outputDir, `${name}-${timestamp}.json`);
       
+      // Create a clean copy of the results without the top-level comparison
+      // if it's already present in the mongodb/postgresql results
+      const resultsToSave = { ...results };
+      
+      // If we have nested comparison objects in both mongodb and postgresql results,
+      // remove the top-level comparison to avoid confusion
+      if (resultsToSave.mongodb && resultsToSave.postgresql && 
+          (resultsToSave.mongodb as any).comparison && 
+          (resultsToSave.postgresql as any).comparison) {
+        delete resultsToSave.comparison;
+      }
+      
       // Write results to file
       await fs.promises.writeFile(
         filePath,
-        JSON.stringify(results, null, 2),
+        JSON.stringify(resultsToSave, null, 2),
         'utf8'
       );
       
