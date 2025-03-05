@@ -247,27 +247,37 @@ program
     // Example: npm run cli run batch-insertion -s large -i 1 -f detailed
     // becomes: npm run cli run batch-insertion large 1 detailed
     if (benchmarkNames.length > 1) {
-      // Check if we have positional arguments that might be options
-      const possibleSizeIndex = benchmarkNames.findIndex((arg: string) => 
-        ['small', 'medium', 'large'].includes(arg.toLowerCase()));
+      // Process all potential options in benchmarkNames
+      const newBenchmarkNames = [benchmarkNames[0]]; // Keep the first name as the actual benchmark name
       
-      if (possibleSizeIndex > 0) {
-        options.size = benchmarkNames[possibleSizeIndex];
-        benchmarkNames.splice(possibleSizeIndex, 1);
+      // Process the rest as potential options
+      for (let i = 1; i < benchmarkNames.length; i++) {
+        const arg = benchmarkNames[i];
         
-        // Check if the next argument is a number (iterations)
-        if (benchmarkNames.length > possibleSizeIndex && !isNaN(Number(benchmarkNames[possibleSizeIndex]))) {
-          options.iterations = benchmarkNames[possibleSizeIndex];
-          benchmarkNames.splice(possibleSizeIndex, 1);
-          
-          // Check if the next argument is a format
-          if (benchmarkNames.length > possibleSizeIndex && 
-              ['simple', 'detailed'].includes(benchmarkNames[possibleSizeIndex].toLowerCase())) {
-            options.format = benchmarkNames[possibleSizeIndex];
-            benchmarkNames.splice(possibleSizeIndex, 1);
-          }
+        // Check if it's a size option
+        if (['small', 'medium', 'large'].includes(arg.toLowerCase())) {
+          options.size = arg;
+          continue;
         }
+        
+        // Check if it's a number (iterations)
+        if (!isNaN(Number(arg))) {
+          options.iterations = arg;
+          continue;
+        }
+        
+        // Check if it's a format option
+        if (['simple', 'detailed'].includes(arg.toLowerCase())) {
+          options.format = arg;
+          continue;
+        }
+        
+        // If it's none of the above, keep it as a benchmark name
+        newBenchmarkNames.push(arg);
       }
+      
+      // Replace the original benchmarkNames with our filtered version
+      benchmarkNames = newBenchmarkNames;
     }
     
     // Check if the last argument is a format option mistakenly passed as a benchmark name
