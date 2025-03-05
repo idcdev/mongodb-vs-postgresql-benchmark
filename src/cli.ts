@@ -16,7 +16,6 @@ import { MongoDBAdapter } from './core/application/database/mongodb-adapter';
 import { PostgreSQLAdapter } from './core/application/database/postgresql-adapter';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import fs from 'fs';
 import path from 'path';
 import * as dotenv from 'dotenv';
 
@@ -144,11 +143,11 @@ const calculateComparison = (mongoData: any, postgresData: any) => {
   const postgresMedian = postgresData.statistics.medianDurationMs;
   
   let winner = 'mongodb';
-  let percentageDiff = ((postgresMedian - mongoMedian) / mongoMedian) * 100;
+  let percentageDiff = ((postgresMedian - mongoMedian) / postgresMedian) * 100;
   
   if (postgresMedian < mongoMedian) {
     winner = 'postgresql';
-    percentageDiff = ((mongoMedian - postgresMedian) / postgresMedian) * 100;
+    percentageDiff = ((mongoMedian - postgresMedian) / mongoMedian) * 100;
   }
   
   return {
@@ -243,6 +242,34 @@ program
       process.exit(1);
     }
     
+    // Handle positional arguments if npm run is used without --
+    // When npm run is used without --, arguments are passed as positional arguments
+    // Example: npm run cli run batch-insertion -s large -i 1 -f detailed
+    // becomes: npm run cli run batch-insertion large 1 detailed
+    if (benchmarkNames.length > 1) {
+      // Check if we have positional arguments that might be options
+      const possibleSizeIndex = benchmarkNames.findIndex((arg: string) => 
+        ['small', 'medium', 'large'].includes(arg.toLowerCase()));
+      
+      if (possibleSizeIndex > 0) {
+        options.size = benchmarkNames[possibleSizeIndex];
+        benchmarkNames.splice(possibleSizeIndex, 1);
+        
+        // Check if the next argument is a number (iterations)
+        if (benchmarkNames.length > possibleSizeIndex && !isNaN(Number(benchmarkNames[possibleSizeIndex]))) {
+          options.iterations = benchmarkNames[possibleSizeIndex];
+          benchmarkNames.splice(possibleSizeIndex, 1);
+          
+          // Check if the next argument is a format
+          if (benchmarkNames.length > possibleSizeIndex && 
+              ['simple', 'detailed'].includes(benchmarkNames[possibleSizeIndex].toLowerCase())) {
+            options.format = benchmarkNames[possibleSizeIndex];
+            benchmarkNames.splice(possibleSizeIndex, 1);
+          }
+        }
+      }
+    }
+    
     // Check if the last argument is a format option mistakenly passed as a benchmark name
     if (benchmarkNames.length > 0) {
       const lastArg = benchmarkNames[benchmarkNames.length - 1];
@@ -252,12 +279,19 @@ program
       }
     }
     
+    // Parse options
+    const dataSize = parseDataSize(options.size);
+    const iterations = parseInt(options.iterations, 10);
+    const outputDir = options.output;
+    const cleanup = options.cleanup;
+    const format = options.format || 'simple';
+    
     console.log('\nRunning benchmarks with options:');
     console.log(`- Data size: ${options.size}`);
-    console.log(`- Iterations: ${options.iterations}`);
-    console.log(`- Output directory: ${options.output}`);
-    console.log(`- Cleanup: ${options.cleanup ? 'Yes' : 'No'}`);
-    console.log(`- Format: ${options.format}`);
+    console.log(`- Iterations: ${iterations}`);
+    console.log(`- Output directory: ${outputDir}`);
+    console.log(`- Cleanup: ${cleanup ? 'Yes' : 'No'}`);
+    console.log(`- Format: ${format}`);
     
     try {
       // Setup event listeners
@@ -480,36 +514,33 @@ program
         console.error(`Error running benchmark ${name}:`, error);
       });
       
-      // Parse options
-      const benchmarkOptions = {
-        size: parseDataSize(options.size),
-        iterations: parseInt(options.iterations, 10),
-        setupEnvironment: true,
-        cleanupEnvironment: options.cleanup !== false,
-        saveResults: true,
-        outputDir: options.output,
-        databaseOptions: {
-          mongodb: {},
-          postgresql: {}
-        }
-      };
-      
-      // Ensure output directory exists
-      if (!fs.existsSync(benchmarkOptions.outputDir)) {
-        fs.mkdirSync(benchmarkOptions.outputDir, { recursive: true });
-      }
-      
-      // Determine which benchmarks to run
-      let benchmarksToRun: string[] = [];
-      
+      // Run benchmarks
       if (benchmarkNames.length === 0 || (benchmarkNames.length === 1 && benchmarkNames[0].toLowerCase() === 'all')) {
         // Run all benchmarks
-        benchmarksToRun = benchmarkService.getAllBenchmarks().map(b => b.getName());
-        console.log(`Running all ${benchmarksToRun.length} benchmark(s)...`);
+        const allBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
+        console.log(`Running all ${allBenchmarks.length} benchmark(s)...`);
+        
+        // Run each benchmark individually to ensure options are applied
+        for (const benchmarkName of allBenchmarks) {
+          try {
+            const benchmarkOptions = {
+              size: dataSize,
+              iterations,
+              outputDir,
+              cleanupEnvironment: cleanup,
+              saveResults: true,
+              setupEnvironment: true
+            };
+            
+            await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
+          } catch (error) {
+            console.error(`Error running benchmark ${benchmarkName}:`, error);
+          }
+        }
       } else {
         // Filter out any non-benchmark arguments that might be mistaken for benchmark names
         const availableBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
-        benchmarksToRun = benchmarkNames.filter((name: string) => availableBenchmarks.includes(name));
+        const benchmarksToRun = benchmarkNames.filter((name: string) => availableBenchmarks.includes(name));
         
         if (benchmarksToRun.length === 0) {
           console.error('No valid benchmarks specified. Available benchmarks:');
@@ -518,31 +549,46 @@ program
         }
         
         console.log(`Running ${benchmarksToRun.length} benchmark(s)...`);
-      }
-      
-      // Run the benchmarks
-      for (const benchmarkName of benchmarksToRun) {
-        try {
-          await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
-        } catch (error) {
-          console.error(`Error running benchmark ${benchmarkName}:`, error);
+        
+        // Run the benchmarks
+        for (const benchmarkName of benchmarksToRun) {
+          try {
+            const benchmarkOptions = {
+              size: dataSize,
+              iterations,
+              outputDir,
+              cleanupEnvironment: cleanup,
+              saveResults: true,
+              setupEnvironment: true
+            };
+            
+            await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
+          } catch (error) {
+            console.error(`Error running benchmark ${benchmarkName}:`, error);
+          }
         }
       }
       
       console.log(chalk.green('\nAll benchmarks completed successfully!'));
-      console.log(`Results saved to: ${path.resolve(benchmarkOptions.outputDir)}`);
+      console.log(`Results saved to: ${path.resolve(outputDir)}`);
     } catch (error) {
       console.error('Error running benchmarks:', error);
+      process.exit(1);
     } finally {
       // Disconnect from databases
-      for (const [, adapter] of adapters.entries()) {
-        if (adapter.isConnected()) {
-          await adapter.disconnect();
-          console.log(`Disconnected from ${adapter.getDatabaseType ? adapter.getDatabaseType() : 'database'}`);
-        }
-      }
+      await disconnectFromDatabases();
     }
   });
+
+// Create a function to disconnect from databases
+async function disconnectFromDatabases() {
+  for (const [, adapter] of adapters.entries()) {
+    if (adapter.isConnected()) {
+      await adapter.disconnect();
+      console.log(`Disconnected from ${adapter.getDatabaseType ? adapter.getDatabaseType() : 'database'}`);
+    }
+  }
+}
 
 // Parse command line arguments
 program.parse(process.argv);
