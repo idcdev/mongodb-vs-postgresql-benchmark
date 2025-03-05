@@ -63,6 +63,11 @@ export interface BenchmarkOptions {
   };
   
   /**
+   * Custom batch sizes for batch operations
+   */
+  batchSizes?: number[];
+  
+  /**
    * Whether to run the benchmark in verbose mode
    */
   verbose?: boolean;
@@ -76,4 +81,25 @@ export interface BenchmarkOptions {
    * Additional custom options
    */
   [key: string]: any;
+}
+
+/**
+ * Database-specific options
+ */
+export interface DatabaseOptions {
+  /**
+   * MongoDB-specific options
+   */
+  mongodb?: Record<string, any>;
+  
+  /**
+   * PostgreSQL-specific options
+   */
+  postgresql?: Record<string, any>;
+  
+  /**
+   * Target database for running a specific benchmark
+   * Used internally by the benchmark service
+   */
+  targetDatabase?: string;
 }
