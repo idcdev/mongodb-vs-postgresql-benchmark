@@ -11,6 +11,7 @@ import { DefaultEventEmitter } from './core/application/events/default-event-emi
 import { DefaultBenchmarkService } from './core/application/benchmark/default-benchmark-service';
 import { registerAllBenchmarks } from './core/benchmarks';
 import { DataSize } from './core/domain/model/benchmark-options';
+import { BenchmarkOptions } from './core/domain/model/benchmark-options';
 import { DatabaseType } from './core/domain/interfaces/database-adapter.interface';
 import { MongoDBAdapter } from './core/application/database/mongodb-adapter';
 import { PostgreSQLAdapter } from './core/application/database/postgresql-adapter';
@@ -18,6 +19,7 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import path from 'path';
 import * as dotenv from 'dotenv';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -31,7 +33,7 @@ program
   .description('MongoDB vs PostgreSQL Benchmark CLI')
   .version('1.0.0');
 
-// Create dependencies
+// Create a single instance of the benchmark service to be used throughout the CLI
 const configProvider = new DefaultConfigProvider();
 const eventEmitter = new DefaultEventEmitter();
 const benchmarkService = new DefaultBenchmarkService(configProvider, eventEmitter);
@@ -40,14 +42,22 @@ const benchmarkService = new DefaultBenchmarkService(configProvider, eventEmitte
 const adapters = new Map();
 (global as any).adapters = adapters;
 
+// Register all benchmarks
+registerAllBenchmarks(benchmarkService);
+
+// Create MongoDB adapter
+const mongoAdapter = new MongoDBAdapter(configProvider);
+benchmarkService.registerDatabaseAdapter(mongoAdapter);
+
+// Create PostgreSQL adapter
+const postgresAdapter = new PostgreSQLAdapter(configProvider);
+benchmarkService.registerDatabaseAdapter(postgresAdapter);
+
 // Create the list command
 program
   .command('list')
   .description('List all available benchmarks')
   .action(() => {
-    // Register all benchmarks
-    registerAllBenchmarks(benchmarkService);
-    
     // Get all registered benchmarks
     const availableBenchmarks = benchmarkService.getAllBenchmarks();
     
@@ -196,7 +206,6 @@ program
     }
     
     // Available benchmarks
-    registerAllBenchmarks(benchmarkService);
     const benchmarks = benchmarkService.getAllBenchmarks();
     
     console.log(chalk.cyan('\nAvailable Benchmarks:'));
@@ -232,13 +241,17 @@ program
   .option('-o, --output <dir>', 'Output directory for results', './benchmark-results')
   .option('--no-cleanup', 'Do not clean up after benchmarks')
   .option('-f, --format <format>', 'Output format (simple, detailed)', 'simple')
+  .option('-b, --batch-sizes <sizes>', 'Batch sizes for batch operations (comma-separated numbers)')
+  .option('-v, --verbose', 'Show verbose output')
   .action(async (benchmarkNames, options) => {
-    // Register all benchmarks
-    registerAllBenchmarks(benchmarkService);
-    
     // Connect to databases
-    const connected = await connectToDatabases(options.mongoUri, options.postgresUri);
-    if (!connected) {
+    try {
+      const connected = await connectToDatabases(options.mongoUri, options.postgresUri);
+      if (!connected) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('Failed to connect to databases:', error);
       process.exit(1);
     }
     
@@ -289,316 +302,363 @@ program
       }
     }
     
-    // Parse options
-    const dataSize = parseDataSize(options.size);
+    // Parse iterations
     const iterations = parseInt(options.iterations, 10);
-    const outputDir = options.output;
-    const cleanup = options.cleanup;
-    const format = options.format || 'simple';
+    if (isNaN(iterations) || iterations < 1) {
+      console.error('Invalid number of iterations. Must be a positive integer.');
+      process.exit(1);
+    }
+    
+    // Parse batch sizes if provided
+    if (options.batchSizes) {
+      options.batchSizes = options.batchSizes.split(',').map((size: string) => parseInt(size.trim(), 10));
+      
+      // Validate batch sizes
+      if (options.batchSizes.some((size: number) => isNaN(size) || size < 1)) {
+        console.error('Invalid batch sizes. Must be positive integers separated by commas.');
+        process.exit(1);
+      }
+    }
+    
+    // Setup output directory
+    const outputDir = path.resolve(options.output);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    // Determine cleanup setting
+    const cleanup = options.cleanup !== false;
     
     console.log('\nRunning benchmarks with options:');
     console.log(`- Data size: ${options.size}`);
     console.log(`- Iterations: ${iterations}`);
-    console.log(`- Output directory: ${outputDir}`);
+    console.log(`- Output directory: ${options.output}`);
     console.log(`- Cleanup: ${cleanup ? 'Yes' : 'No'}`);
-    console.log(`- Format: ${format}`);
+    console.log(`- Format: ${options.format}`);
+    if (options.batchSizes) {
+      console.log(`- Batch sizes: ${options.batchSizes.join(', ')}`);
+    }
+    console.log(`- Verbose: ${options.verbose ? 'Yes' : 'No'}`);
     
-    try {
-      // Setup event listeners
-      eventEmitter.on('benchmark:started', ({ name }: { name: string }) => {
-        console.log(`\nRunning benchmark: ${chalk.cyan(name)}...`);
-      });
+    // Remove existing event listeners to prevent duplicates
+    eventEmitter.removeAllListeners('benchmark:started');
+    eventEmitter.removeAllListeners('benchmark:completed');
+    eventEmitter.removeAllListeners('benchmark:error');
+    eventEmitter.removeAllListeners('benchmark:database:started');
+    eventEmitter.removeAllListeners('benchmark:database:completed');
+    eventEmitter.removeAllListeners('benchmark:database:error');
+    
+    // Setup event listeners
+    eventEmitter.on('benchmark:started', ({ name }: { name: string }) => {
+      console.log(`\nRunning benchmark: ${name}...`);
+    });
+    
+    eventEmitter.on('benchmark:completed', ({ result }: { result: any }) => {
+      console.log(`\nBenchmark ${chalk.green(result.name)} completed.`);
       
-      // Define a custom event handler for benchmark completion
-      eventEmitter.removeAllListeners('benchmark:completed');
-      eventEmitter.on('benchmark:completed', ({ result }: { result: any }) => {
-        console.log(`\nBenchmark ${chalk.green(result.name)} completed.`);
+      // Determine output format
+      const format = options.format || 'simple';
+      
+      // Helper function to get nested MongoDB data
+      const getMongoData = (result: any) => {
+        if (result.mongodb && result.mongodb.mongodb) {
+          return result.mongodb.mongodb;
+        }
+        return result.mongodb;
+      };
+      
+      // Helper function to get nested PostgreSQL data
+      const getPostgresData = (result: any) => {
+        if (result.postgresql && result.postgresql.postgresql) {
+          return result.postgresql.postgresql;
+        }
+        return result.postgresql;
+      };
+      
+      if (format === 'simple') {
+        // Simple output format
+        console.log(chalk.cyan('\nSummary:'));
         
-        // Determine output format
-        const format = options.format || 'simple';
+        const summaryTable = new Table({
+          head: [
+            chalk.white('Database'),
+            chalk.white('Median (ms)'),
+            chalk.white('Mean (ms)'),
+            chalk.white('Operations')
+          ]
+        });
         
-        // Helper function to get nested MongoDB data
-        const getMongoData = (result: any) => {
-          if (result.mongodb && result.mongodb.mongodb) {
-            return result.mongodb.mongodb;
-          }
-          return null;
-        };
+        const mongoData = getMongoData(result);
+        if (mongoData && mongoData.statistics) {
+          summaryTable.push([
+            chalk.yellow('MongoDB'),
+            mongoData.statistics.medianDurationMs.toFixed(2),
+            mongoData.statistics.meanDurationMs.toFixed(2),
+            mongoData.operation ? mongoData.operation.count : 'N/A'
+          ]);
+        }
         
-        // Helper function to get nested PostgreSQL data
-        const getPostgresData = (result: any) => {
-          if (result.postgresql && result.postgresql.mongodb) {
-            return result.postgresql.mongodb;
-          }
-          return null;
-        };
+        const postgresData = getPostgresData(result);
+        if (postgresData && postgresData.statistics) {
+          summaryTable.push([
+            chalk.blue('PostgreSQL'),
+            postgresData.statistics.medianDurationMs.toFixed(2),
+            postgresData.statistics.meanDurationMs.toFixed(2),
+            postgresData.operation ? postgresData.operation.count : 'N/A'
+          ]);
+        }
         
-        if (format === 'simple') {
-          // Simple output format
-          console.log(chalk.cyan('\nSummary:'));
+        console.log(summaryTable.toString());
+        
+        // Show winner if both databases were tested
+        if (mongoData && postgresData && mongoData.statistics && postgresData.statistics) {
+          const mongoMedian = mongoData.statistics.medianDurationMs;
+          const pgMedian = postgresData.statistics.medianDurationMs;
+          const percentageDiff = Math.abs(((mongoMedian - pgMedian) / (pgMedian < mongoMedian ? mongoMedian : pgMedian)) * 100).toFixed(2);
+          const winner = pgMedian < mongoMedian ? 'postgresql' : 'mongodb';
           
-          const summaryTable = new Table({
-            head: [
-              chalk.white('Database'),
-              chalk.white('Median (ms)'),
-              chalk.white('Mean (ms)'),
-              chalk.white('Operations')
-            ]
+          console.log(`\nWinner: ${winner} is ${percentageDiff}% faster`);
+        } else if (result.comparison) {
+          const winner = result.comparison.winner;
+          const percentageDiff = Math.abs(result.comparison.percentageDiff).toFixed(2);
+          
+          console.log(`\nWinner: ${winner} is ${percentageDiff}% faster`);
+        } else if (mongoData && mongoData.statistics) {
+          console.log(`\nWinner: mongodb is 0.00% faster`);
+        } else if (postgresData && postgresData.statistics) {
+          console.log(`\nWinner: postgresql is 0.00% faster`);
+        }
+      } else if (format === 'detailed') {
+        // Detailed output format with tables
+        console.log(chalk.cyan('\nDetailed Results:'));
+        
+        // Create a table for statistics
+        const statsTable = new Table({
+          head: [
+            chalk.white('Database'),
+            chalk.white('Min (ms)'),
+            chalk.white('Max (ms)'),
+            chalk.white('Mean (ms)'),
+            chalk.white('Median (ms)'),
+            chalk.white('StdDev (ms)')
+          ]
+        });
+        
+        const mongoData = getMongoData(result);
+        if (mongoData && mongoData.statistics) {
+          statsTable.push([
+            chalk.yellow('MongoDB'),
+            mongoData.statistics.minDurationMs.toFixed(2),
+            mongoData.statistics.maxDurationMs.toFixed(2),
+            mongoData.statistics.meanDurationMs.toFixed(2),
+            chalk.bold(mongoData.statistics.medianDurationMs.toFixed(2)),
+            mongoData.statistics.stdDevDurationMs.toFixed(2)
+          ]);
+        }
+        
+        const postgresData = getPostgresData(result);
+        if (postgresData && postgresData.statistics) {
+          statsTable.push([
+            chalk.blue('PostgreSQL'),
+            postgresData.statistics.minDurationMs.toFixed(2),
+            postgresData.statistics.maxDurationMs.toFixed(2),
+            postgresData.statistics.meanDurationMs.toFixed(2),
+            chalk.bold(postgresData.statistics.medianDurationMs.toFixed(2)),
+            postgresData.statistics.stdDevDurationMs.toFixed(2)
+          ]);
+        }
+        
+        console.log(statsTable.toString());
+        
+        // Show iteration details
+        console.log(chalk.cyan('\nIterations:'));
+        
+        if (mongoData && mongoData.iterations) {
+          console.log(chalk.yellow('\nMongoDB:'));
+          const mongoTable = new Table({
+            head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
           });
           
-          const mongoData = getMongoData(result);
-          if (mongoData && mongoData.statistics) {
-            summaryTable.push([
-              chalk.yellow('MongoDB'),
-              mongoData.statistics.medianDurationMs.toFixed(2),
-              mongoData.statistics.meanDurationMs.toFixed(2),
-              mongoData.operation?.count || 'N/A'
+          mongoData.iterations.forEach((iter: any, index: number) => {
+            mongoTable.push([
+              index + 1,
+              typeof iter === 'object' && 'durationMs' in iter 
+                ? iter.durationMs.toFixed(2)
+                : typeof iter === 'number' ? iter.toFixed(2) : 'N/A'
             ]);
-          }
-          
-          const postgresData = getPostgresData(result);
-          if (postgresData && postgresData.statistics) {
-            summaryTable.push([
-              chalk.blue('PostgreSQL'),
-              postgresData.statistics.medianDurationMs.toFixed(2),
-              postgresData.statistics.meanDurationMs.toFixed(2),
-              postgresData.operation?.count || 'N/A'
-            ]);
-          }
-          
-          console.log(summaryTable.toString());
-          
-          // Calculate and display comparison
-          if (mongoData && postgresData) {
-            const comparison = calculateComparison(mongoData, postgresData);
-            const winner = comparison.winner;
-            const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
-            console.log(`\n${chalk.bold('Winner')}: ${chalk.bold(winner)} is ${chalk.bold(percentageDiff)}% faster`);
-          } else if (result.comparison) {
-            const winner = result.comparison.winner;
-            const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
-            console.log(`\n${chalk.bold('Winner')}: ${chalk.bold(winner)} is ${chalk.bold(percentageDiff)}% faster`);
-          }
-        } else if (format === 'detailed') {
-          // Detailed output format with tables
-          console.log(chalk.cyan('\nDetailed Results:'));
-          
-          // Create a table for statistics
-          const statsTable = new Table({
-            head: [
-              chalk.white('Database'),
-              chalk.white('Min (ms)'),
-              chalk.white('Max (ms)'),
-              chalk.white('Mean (ms)'),
-              chalk.white('Median (ms)'),
-              chalk.white('StdDev (ms)')
-            ]
           });
           
-          const mongoData = getMongoData(result);
-          if (mongoData && mongoData.statistics) {
-            statsTable.push([
-              chalk.yellow('MongoDB'),
-              mongoData.statistics.minDurationMs.toFixed(2),
-              mongoData.statistics.maxDurationMs.toFixed(2),
-              mongoData.statistics.meanDurationMs.toFixed(2),
-              chalk.bold(mongoData.statistics.medianDurationMs.toFixed(2)),
-              mongoData.statistics.stdDevDurationMs.toFixed(2)
+          console.log(mongoTable.toString());
+        }
+        
+        if (postgresData && postgresData.iterations) {
+          console.log(chalk.blue('\nPostgreSQL:'));
+          const pgTable = new Table({
+            head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
+          });
+          
+          postgresData.iterations.forEach((iter: any, index: number) => {
+            pgTable.push([
+              index + 1,
+              typeof iter === 'object' && 'durationMs' in iter 
+                ? iter.durationMs.toFixed(2)
+                : typeof iter === 'number' ? iter.toFixed(2) : 'N/A'
             ]);
-          }
+          });
           
-          const postgresData = getPostgresData(result);
-          if (postgresData && postgresData.statistics) {
-            statsTable.push([
-              chalk.blue('PostgreSQL'),
-              postgresData.statistics.minDurationMs.toFixed(2),
-              postgresData.statistics.maxDurationMs.toFixed(2),
-              postgresData.statistics.meanDurationMs.toFixed(2),
-              chalk.bold(postgresData.statistics.medianDurationMs.toFixed(2)),
-              postgresData.statistics.stdDevDurationMs.toFixed(2)
-            ]);
-          }
-          
-          console.log(statsTable.toString());
-          
-          // Show iteration details
-          console.log(chalk.cyan('\nIterations:'));
-          
-          if (mongoData && mongoData.iterations) {
-            console.log(chalk.yellow('\nMongoDB:'));
-            const mongoTable = new Table({
-              head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
-            });
-            
-            mongoData.iterations.forEach((iter: any, index: number) => {
-              mongoTable.push([
-                index + 1,
-                typeof iter === 'object' && 'durationMs' in iter 
-                  ? iter.durationMs.toFixed(2)
-                  : typeof iter === 'number' ? iter.toFixed(2) : 'N/A'
-              ]);
-            });
-            
-            console.log(mongoTable.toString());
-          }
-          
-          if (postgresData && postgresData.iterations) {
-            console.log(chalk.blue('\nPostgreSQL:'));
-            const pgTable = new Table({
-              head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
-            });
-            
-            postgresData.iterations.forEach((iter: any, index: number) => {
-              pgTable.push([
-                index + 1,
-                typeof iter === 'object' && 'durationMs' in iter 
-                  ? iter.durationMs.toFixed(2)
-                  : typeof iter === 'number' ? iter.toFixed(2) : 'N/A'
-              ]);
-            });
-            
-            console.log(pgTable.toString());
-          }
-          
-          // Show comparison if available
-          if (mongoData && postgresData) {
-            console.log(chalk.cyan('\nComparison:'));
-            const comparison = calculateComparison(mongoData, postgresData);
-            const winner = comparison.winner;
-            const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
-            
-            const comparisonTable = new Table();
-            
-            comparisonTable.push(
-              { 'Winner': chalk.bold(winner) },
-              { 'Difference': `${chalk.bold(percentageDiff)}%` },
-              { 'Median Ratio': comparison.medianRatio.toFixed(2) }
-            );
-            
-            console.log(comparisonTable.toString());
-          } else if (result.comparison) {
-            console.log(chalk.cyan('\nComparison:'));
-            const winner = result.comparison.winner;
-            const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
-            
-            const comparisonTable = new Table();
-            
-            comparisonTable.push(
-              { 'Winner': chalk.bold(winner) },
-              { 'Difference': `${chalk.bold(percentageDiff)}%` },
-              { 'Median Ratio': result.comparison.medianRatio.toFixed(2) }
-            );
-            
-            console.log(comparisonTable.toString());
-          }
-          
-          // Show operation metadata
-          if (mongoData && mongoData.operation) {
-            console.log(chalk.cyan('\nOperation Details:'));
-            
-            const metadataTable = new Table();
-            
-            metadataTable.push(
-              { 'Type': mongoData.operation.type },
-              { 'Count': mongoData.operation.count }
-            );
-            
-            if (mongoData.operation.metadata) {
-              Object.entries(mongoData.operation.metadata).forEach(([key, value]) => {
-                const row: Record<string, any> = {};
-                row[key] = value;
-                metadataTable.push(row);
-              });
-            }
-            
-            console.log(metadataTable.toString());
-          }
+          console.log(pgTable.toString());
         }
         
-        // Show where results are saved
-        const resultsDir = path.resolve(options.output);
-        console.log(`\nFull results saved to JSON in: ${chalk.underline(resultsDir)}`);
-      });
-      
-      eventEmitter.on('benchmark:error', ({ name, error }: { name: string, error: Error }) => {
-        console.error(`Error running benchmark ${name}:`, error);
-      });
-      
-      // Run benchmarks
-      if (benchmarkNames.length === 0 || (benchmarkNames.length === 1 && benchmarkNames[0].toLowerCase() === 'all')) {
-        // Run all benchmarks
-        const allBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
-        console.log(`Running all ${allBenchmarks.length} benchmark(s)...`);
-        
-        // Run each benchmark individually to ensure options are applied
-        for (const benchmarkName of allBenchmarks) {
-          try {
-            const benchmarkOptions = {
-              size: dataSize,
-              iterations,
-              outputDir,
-              cleanupEnvironment: cleanup,
-              saveResults: true,
-              setupEnvironment: true
-            };
-            
-            await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
-          } catch (error) {
-            console.error(`Error running benchmark ${benchmarkName}:`, error);
-          }
-        }
-      } else {
-        // Filter out any non-benchmark arguments that might be mistaken for benchmark names
-        const availableBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
-        const benchmarksToRun = benchmarkNames.filter((name: string) => availableBenchmarks.includes(name));
-        
-        if (benchmarksToRun.length === 0) {
-          console.error('No valid benchmarks specified. Available benchmarks:');
-          availableBenchmarks.forEach(name => console.log(`- ${name}`));
-          process.exit(1);
+        // Show comparison if available
+        if (mongoData && postgresData) {
+          console.log(chalk.cyan('\nComparison:'));
+          const comparison = calculateComparison(mongoData, postgresData);
+          const winner = comparison.winner;
+          const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
+          
+          const comparisonTable = new Table();
+          
+          comparisonTable.push(
+            { 'Winner': chalk.bold(winner) },
+            { 'Difference': `${chalk.bold(percentageDiff)}%` },
+            { 'Median Ratio': comparison.medianRatio.toFixed(2) }
+          );
+          
+          console.log(comparisonTable.toString());
+        } else if (result.comparison) {
+          console.log(chalk.cyan('\nComparison:'));
+          const winner = result.comparison.winner;
+          const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
+          
+          const comparisonTable = new Table();
+          
+          comparisonTable.push(
+            { 'Winner': chalk.bold(winner) },
+            { 'Difference': `${chalk.bold(percentageDiff)}%` },
+            { 'Median Ratio': result.comparison.medianRatio.toFixed(2) }
+          );
+          
+          console.log(comparisonTable.toString());
         }
         
-        console.log(`Running ${benchmarksToRun.length} benchmark(s)...`);
-        
-        // Run the benchmarks
-        for (const benchmarkName of benchmarksToRun) {
-          try {
-            const benchmarkOptions = {
-              size: dataSize,
-              iterations,
-              outputDir,
-              cleanupEnvironment: cleanup,
-              saveResults: true,
-              setupEnvironment: true
-            };
-            
-            await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
-          } catch (error) {
-            console.error(`Error running benchmark ${benchmarkName}:`, error);
+        // Show operation metadata
+        if (mongoData && mongoData.operation) {
+          console.log(chalk.cyan('\nOperation Details:'));
+          
+          const metadataTable = new Table();
+          
+          metadataTable.push(
+            { 'Type': mongoData.operation.type },
+            { 'Count': mongoData.operation.count }
+          );
+          
+          if (mongoData.operation.metadata) {
+            Object.entries(mongoData.operation.metadata).forEach(([key, value]) => {
+              const row: Record<string, any> = {};
+              row[key] = value;
+              metadataTable.push(row);
+            });
           }
+          
+          console.log(metadataTable.toString());
         }
       }
       
-      console.log(chalk.green('\nAll benchmarks completed successfully!'));
-      console.log(`Results saved to: ${path.resolve(outputDir)}`);
-    } catch (error) {
-      console.error('Error running benchmarks:', error);
-      process.exit(1);
-    } finally {
-      // Disconnect from databases
-      await disconnectFromDatabases();
-    }
-  });
+      // Show where results are saved
+      const resultsDir = path.resolve(options.output);
+      console.log(`\nFull results saved to JSON in: ${chalk.underline(resultsDir)}`);
+    });
+    
+    eventEmitter.on('benchmark:error', ({ name, error }: { name: string, error: Error }) => {
+      console.error(`Error running benchmark ${name}:`, error);
+    });
+    
+    // Run benchmarks
+    if (benchmarkNames.length === 0 || (benchmarkNames.length === 1 && benchmarkNames[0].toLowerCase() === 'all')) {
+      // Run all benchmarks
+      const allBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
+      console.log(`Running ${allBenchmarks.length} benchmark(s)...`);
+      
+      // Run each benchmark individually to ensure options are applied
+      for (const benchmarkName of allBenchmarks) {
+        try {
+          const benchmarkOptions: BenchmarkOptions = {
+            size: parseDataSize(options.size),
+            customSize: options.customSize ? parseInt(options.customSize, 10) : undefined,
+            iterations: iterations,
+            setupEnvironment: true,
+            cleanupEnvironment: cleanup,
+            saveResults: true,
+            outputDir: outputDir,
+            verbose: options.verbose || false,
+            batchSizes: options.batchSizes
+          };
+          
+          await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
+        } catch (error) {
+          console.error(`Error running benchmark ${benchmarkName}:`, error);
+        }
+      }
+    } else {
+      // Filter out any non-benchmark arguments that might be mistaken for benchmark names
+      const availableBenchmarks = benchmarkService.getAllBenchmarks().map(b => b.getName());
+      const benchmarksToRun = benchmarkNames.filter((name: string) => availableBenchmarks.includes(name));
+      
+      if (benchmarksToRun.length === 0) {
+        console.error('No valid benchmarks specified. Available benchmarks:');
+        availableBenchmarks.forEach(name => console.log(`- ${name}`));
+        process.exit(1);
+      }
+      
+      console.log(`Running ${benchmarksToRun.length} benchmark(s)...`);
+      
+      // Run the benchmarks
+      for (const benchmarkName of benchmarksToRun) {
+        try {
+          // Validate benchmark name
+          if (!benchmarkService.hasBenchmark(benchmarkName)) {
+            console.error(`Benchmark ${benchmarkName} not found`);
+            return;
+          }
 
-// Create a function to disconnect from databases
-async function disconnectFromDatabases() {
-  for (const [, adapter] of adapters.entries()) {
-    if (adapter.isConnected()) {
-      await adapter.disconnect();
-      console.log(`Disconnected from ${adapter.getDatabaseType ? adapter.getDatabaseType() : 'database'}`);
+          console.log(`\nRunning benchmark: ${benchmarkName}...`);
+          
+          const benchmarkOptions: BenchmarkOptions = {
+            size: options.size,
+            iterations: options.iterations,
+            setupEnvironment: !options.noSetup,
+            cleanupEnvironment: !options.noCleanup,
+            saveResults: !options.noSave,
+            outputDir: options.outputDir,
+            verbose: options.verbose,
+            databaseOptions: {
+              mongodb: {},
+              postgresql: {}
+            }
+          };
+
+          if (options.batchSizes) {
+            // Verificar se batchSizes é uma string antes de chamar split
+            if (typeof options.batchSizes === 'string') {
+              benchmarkOptions.batchSizes = options.batchSizes
+                .split(',')
+                .map((size: string) => parseInt(size.trim(), 10));
+            } else if (Array.isArray(options.batchSizes)) {
+              // Se já for um array, usar diretamente
+              benchmarkOptions.batchSizes = options.batchSizes;
+            }
+          }
+          
+          await benchmarkService.runBenchmark(benchmarkName, benchmarkOptions);
+        } catch (error) {
+          console.error(`Error running benchmark ${benchmarkName}:`, error);
+        }
+      }
     }
-  }
-}
+    
+    console.log(chalk.green('\nAll benchmarks completed successfully!'));
+    console.log(`Results saved to: ${path.resolve(outputDir)}`);
+  });
 
 // Parse command line arguments
 program.parse(process.argv);
@@ -606,4 +666,4 @@ program.parse(process.argv);
 // If no arguments, show help
 if (process.argv.length <= 2) {
   program.help();
-} 
+}
