@@ -118,4 +118,14 @@ export interface DatabaseAdapter {
    * Execute a raw query (database-specific)
    */
   executeRawQuery(query: string, params?: any[]): Promise<any>;
+  
+  /**
+   * Check if a collection/table exists
+   */
+  collectionExists(name: string): Promise<boolean>;
+  
+  /**
+   * Convert a string ID to a database-specific object ID (if applicable)
+   */
+  objectId(id: string): any;
 } 

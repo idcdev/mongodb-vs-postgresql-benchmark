@@ -80,6 +80,11 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       // Use provided options or get from config
       const connectionOptions = options || this.getConnectionOptionsFromConfig();
       
+      // Ensure password is a string
+      if (connectionOptions.password !== undefined) {
+        connectionOptions.password = String(connectionOptions.password);
+      }
+      
       // Create PostgreSQL pool
       this.pool = new Pool({
         host: connectionOptions.host,
@@ -855,7 +860,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       host: dbConfig.host || 'localhost',
       port: dbConfig.port || 5432,
       user: dbConfig.user || dbConfig.username || 'postgres',
-      password: dbConfig.password || '',
+      password: String(dbConfig.password || 'postgres'),
       database: dbConfig.database || 'benchmark',
       ssl: dbConfig.ssl || false,
       connectionTimeoutMillis: dbConfig.connectionTimeout || 30000,
@@ -863,5 +868,40 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       poolSize: dbConfig.poolSize || 10,
       uri: dbConfig.uri || '',
     };
+  }
+
+  /**
+   * Check if a table exists
+   * 
+   * @param name - The table name
+   * @returns true if the table exists, false otherwise
+   */
+  public async collectionExists(name: string): Promise<boolean> {
+    if (!this.pool) {
+      throw new Error('Not connected to PostgreSQL');
+    }
+    
+    try {
+      const result = await this.pool.query(
+        'SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = $1)',
+        [name]
+      );
+      
+      return result.rows[0].exists;
+    } catch (error) {
+      throw new Error(`Failed to check if table ${name} exists: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Convert a string ID to a database-specific object ID
+   * PostgreSQL doesn't have a specific object ID type like MongoDB,
+   * so this method simply returns the ID as is.
+   * 
+   * @param id - The ID to convert
+   * @returns The ID unchanged
+   */
+  public objectId(id: string): string {
+    return id;
   }
 } 

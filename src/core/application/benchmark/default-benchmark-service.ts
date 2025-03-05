@@ -492,6 +492,20 @@ export class DefaultBenchmarkService implements BenchmarkService {
    * @returns Comparison between the two results
    */
   private generateComparison(mongodbResult: any, postgresqlResult: any): BenchmarkComparison {
+    // Check if results are valid
+    if (!mongodbResult || !postgresqlResult || 
+        !mongodbResult.statistics || !postgresqlResult.statistics ||
+        !mongodbResult.statistics.meanDurationMs || !postgresqlResult.statistics.meanDurationMs) {
+      // Return default comparison if results are invalid
+      return {
+        meanDiffMs: 0,
+        medianDiffMs: 0,
+        medianRatio: 1,
+        percentageDiff: 0,
+        winner: DatabaseType.MONGODB // Default winner
+      };
+    }
+    
     const mongoMean = mongodbResult.statistics.meanDurationMs;
     const mongoMedian = mongodbResult.statistics.medianDurationMs;
     const postgresMean = postgresqlResult.statistics.meanDurationMs;

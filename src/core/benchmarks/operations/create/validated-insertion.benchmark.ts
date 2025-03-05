@@ -561,12 +561,17 @@ export class ValidatedInsertionBenchmark extends BaseBenchmark {
   }
   
   /**
-   * Helper method to get database adapter
-   * This is a mock implementation - in real usage, this would be injected
+   * Get a database adapter
    */
   private async getAdapter(databaseType: DatabaseType): Promise<DatabaseAdapter> {
-    // In the real implementation, this would be provided by the BenchmarkService
-    // For now, throw an error as this is just a template
-    throw new Error(`Database adapter for ${databaseType} should be provided by the BenchmarkService`);
+    // In a real implementation, this would be provided by the BenchmarkService
+    // For now, we'll try to get the adapter from the global adapters map in cli.ts
+    const adapters = (global as any).adapters;
+    
+    if (adapters && adapters.get && adapters.get(databaseType)) {
+      return adapters.get(databaseType);
+    }
+    
+    throw new Error(`Database adapter for ${databaseType} not found. Make sure it's registered with the BenchmarkService.`);
   }
 } 

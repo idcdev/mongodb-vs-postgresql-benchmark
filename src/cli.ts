@@ -6,17 +6,21 @@
  */
 
 import { Command } from 'commander';
+import { EventEmitter } from 'events';
 import { DefaultConfigProvider } from './core/application/config/default-config-provider';
 import { DefaultEventEmitter } from './core/application/events/default-event-emitter';
 import { DefaultBenchmarkService } from './core/application/benchmark/default-benchmark-service';
-import { DatabaseType } from './core/domain/interfaces/database-adapter.interface';
-import { DataSize } from './core/domain/model/benchmark-options';
+import { DatabaseAdapter, DatabaseType } from './core/domain/interfaces/database-adapter.interface';
+import { DataSize, BenchmarkOptions } from './core/domain/model/benchmark-options';
+import { BenchmarkResult } from './core/domain/model/benchmark-result';
 import { MongoDBAdapter } from './core/application/database/mongodb-adapter';
 import { PostgreSQLAdapter } from './core/application/database/postgresql-adapter';
+import { ConfigProvider } from './core/domain/interfaces/config-provider.interface';
 import { registerAllBenchmarks } from './core/benchmarks';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { BenchmarkService } from './core/domain/interfaces/benchmark-service.interface';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +38,10 @@ program
 const configProvider = new DefaultConfigProvider();
 const eventEmitter = new DefaultEventEmitter();
 const benchmarkService = new DefaultBenchmarkService(configProvider, eventEmitter);
+
+// Store database adapters
+const adapters = new Map();
+(global as any).adapters = adapters;
 
 // Create the list command
 program
@@ -58,60 +66,49 @@ program
 
 // Helper function to connect to databases
 async function connectToDatabases(mongoUri?: string, postgresUri?: string) {
-  // Create adapters
-  const mongoAdapter = new MongoDBAdapter(configProvider);
-  const postgresAdapter = new PostgreSQLAdapter(configProvider);
-  
-  // Register MongoDB event listeners
-  eventEmitter.on('database:connecting', ({ type }) => {
-    if (type === DatabaseType.MONGODB) {
-      console.log('Connecting to MongoDB...');
-    }
-  });
-  
-  eventEmitter.on('database:connected', ({ type }) => {
-    if (type === DatabaseType.MONGODB) {
-      console.log('Successfully connected to MongoDB');
-    }
-  });
-  
-  // Register PostgreSQL event listeners
-  eventEmitter.on('database:connecting', ({ type }) => {
-    if (type === DatabaseType.POSTGRESQL) {
-      console.log('Connecting to PostgreSQL...');
-    }
-  });
-  
-  eventEmitter.on('database:connected', ({ type }) => {
-    if (type === DatabaseType.POSTGRESQL) {
-      console.log('Successfully connected to PostgreSQL');
-    }
-  });
-  
-  // Register adapters with the benchmark service
-  benchmarkService.registerDatabaseAdapter(mongoAdapter);
-  benchmarkService.registerDatabaseAdapter(postgresAdapter);
-  
-  // Connect to databases
   try {
+    const config = configProvider;
+    const mongoAdapter = new MongoDBAdapter(config);
+    const postgresAdapter = new PostgreSQLAdapter(config);
+    
+    // Store adapters for later use
+    adapters.set(DatabaseType.MONGODB, mongoAdapter);
+    adapters.set(DatabaseType.POSTGRESQL, postgresAdapter);
+    
     // MongoDB connection options
     const mongoOptions = {
-      uri: mongoUri || process.env.MONGODB_URI || 'mongodb://localhost:27017/benchmark_db',
+      uri: mongoUri || process.env.MONGO_URI || 'mongodb://localhost:27017/benchmark',
       useUnifiedTopology: true,
       useNewUrlParser: true
     };
     
     // PostgreSQL connection options
     const postgresOptions = {
-      uri: postgresUri || process.env.POSTGRES_URI || 'postgresql://postgres:postgres@localhost:5432/benchmark_db',
+      host: 'localhost',
+      port: 5432,
+      user: 'postgres',
+      password: 'postgres',
+      database: 'benchmark',
       ssl: false
     };
+    
+    console.log('Connecting to MongoDB with URI:', mongoOptions.uri);
+    console.log('Connecting to PostgreSQL with options:', {
+      host: postgresOptions.host,
+      port: postgresOptions.port,
+      user: postgresOptions.user,
+      database: postgresOptions.database
+    });
     
     // Connect to both databases
     await Promise.all([
       mongoAdapter.connect(mongoOptions),
       postgresAdapter.connect(postgresOptions)
     ]);
+    
+    // Register adapters with the benchmark service
+    benchmarkService.registerDatabaseAdapter(mongoAdapter);
+    benchmarkService.registerDatabaseAdapter(postgresAdapter);
     
     return true;
   } catch (error) {
@@ -181,16 +178,22 @@ program
         console.log(`Benchmark ${result.name} completed.`);
         console.log('Summary:');
         
-        if (result.mongodb) {
+        if (result.mongodb && result.mongodb.summary && result.mongodb.summary.totalDurationMs) {
           console.log(`- MongoDB: ${result.mongodb.summary.totalDurationMs}ms`);
+        } else if (result.mongodb && result.mongodb.statistics) {
+          console.log(`- MongoDB: ${result.mongodb.statistics.totalDurationMs || result.mongodb.statistics.meanDurationMs}ms`);
         }
         
-        if (result.postgresql) {
+        if (result.postgresql && result.postgresql.summary && result.postgresql.summary.totalDurationMs) {
           console.log(`- PostgreSQL: ${result.postgresql.summary.totalDurationMs}ms`);
+        } else if (result.postgresql && result.postgresql.statistics) {
+          console.log(`- PostgreSQL: ${result.postgresql.statistics.totalDurationMs || result.postgresql.statistics.meanDurationMs}ms`);
         }
         
         if (result.comparison) {
-          console.log(`- Comparison: ${result.comparison.fasterDatabase} is ${result.comparison.percentageDifference.toFixed(2)}% faster`);
+          const winner = result.comparison.winner;
+          const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
+          console.log(`- Comparison: ${winner} is ${percentageDiff}% faster`);
         }
       });
       

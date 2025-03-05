@@ -450,6 +450,39 @@ export class MongoDBAdapter implements DatabaseAdapter {
   }
 
   /**
+   * Check if a collection exists
+   * 
+   * @param name - The collection name
+   * @returns true if the collection exists, false otherwise
+   */
+  public async collectionExists(name: string): Promise<boolean> {
+    if (!this.db) {
+      throw new Error('Not connected to MongoDB');
+    }
+    
+    try {
+      const collections = await this.db.listCollections({ name }).toArray();
+      return collections.length > 0;
+    } catch (error) {
+      throw new Error(`Failed to check if collection ${name} exists: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Convert a string ID to a MongoDB ObjectId
+   * 
+   * @param id - The ID to convert
+   * @returns The MongoDB ObjectId
+   */
+  public objectId(id: string): ObjectId {
+    try {
+      return new ObjectId(id);
+    } catch (error) {
+      throw new Error(`Invalid MongoDB ObjectId: ${id}`);
+    }
+  }
+
+  /**
    * Get a collection
    * 
    * @param name - The collection name

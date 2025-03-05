@@ -21,6 +21,7 @@ lerna-debug.log*
 results/*.json
 results/**/*.json
 !results/README.md
+benchmark-results/
 
 # Coverage directory used by tools like istanbul
 coverage
