@@ -124,6 +124,11 @@ async function runBenchmarks() {
     console.error('Failed to register all benchmarks. Some benchmarks may not run correctly.');
   }
   
+  // Remove existing event listeners to prevent duplicates
+  eventEmitter.removeAllListeners('benchmark:started');
+  eventEmitter.removeAllListeners('benchmark:completed');
+  eventEmitter.removeAllListeners('benchmark:error');
+  
   // Setup event listeners
   eventEmitter.on('benchmark:started', ({ name }) => {
     console.log(`\nRunning benchmark: ${name}...`);
