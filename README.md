@@ -62,7 +62,7 @@ npm run start:db
 ### List Available Benchmarks
 
 ```bash
-npm run cli list
+npm run cli -- list
 ```
 
 This command displays all available benchmarks with their descriptions and supported databases.
@@ -70,7 +70,7 @@ This command displays all available benchmarks with their descriptions and suppo
 ### View Environment Information
 
 ```bash
-npm run cli info
+npm run cli -- info
 ```
 
 This command shows system information, database connection status, and available benchmarks.
@@ -79,21 +79,21 @@ This command shows system information, database connection status, and available
 
 ```bash
 # Run a specific benchmark
-npm run cli run <benchmark-name>
+npm run cli -- run <benchmark-name>
 
 # Examples:
-npm run cli run single-document-insertion
-npm run cli run batch-insertion
-npm run cli run single-document-query
+npm run cli -- run single-document-insertion
+npm run cli -- run batch-insertion
+npm run cli -- run single-document-query
 
 # Run multiple benchmarks
-npm run cli run single-document-insertion batch-insertion
+npm run cli -- run single-document-insertion batch-insertion
 ```
 
 ### Run All Benchmarks
 
 ```bash
-npm run cli run all
+npm run cli -- run all
 ```
 
 ### Output Formats
@@ -102,12 +102,12 @@ You can specify the output format for benchmark results:
 
 ```bash
 # Run with simple output format (default)
-npm run cli run <benchmark-name> -f simple
+npm run cli -- run <benchmark-name> -f simple
 
 # Run with detailed output format
-npm run cli run <benchmark-name> -f detailed
+npm run cli -- run <benchmark-name> -f detailed
 # or
-npm run cli run <benchmark-name> detailed
+npm run cli -- run <benchmark-name> detailed
 ```
 
 ### Data Sizes
@@ -116,10 +116,24 @@ You can specify the data size for benchmark execution:
 
 ```bash
 # Run with specific data sizes
-npm run cli run <benchmark-name> -s small
-npm run cli run <benchmark-name> -s medium
-npm run cli run <benchmark-name> -s large
+npm run cli -- run <benchmark-name> -s small
+npm run cli -- run <benchmark-name> -s medium
+npm run cli -- run <benchmark-name> -s large
 ```
+
+### Batch Sizes
+
+For batch operation benchmarks, you can customize the batch sizes to test different scenarios:
+
+```bash
+# Run with custom batch sizes (comma-separated values)
+npm run cli -- run batch-insertion -b 5,50,500
+
+# Combine with other options
+npm run cli -- run batch-insertion -b 10,100,1000 -s medium -i 5 -v
+```
+
+The batch sizes option allows you to test how different batch sizes affect database performance. This is particularly useful for optimizing bulk operations in production environments.
 
 ## CLI Options
 
@@ -153,6 +167,8 @@ npm run cli run [benchmarks...] [options]
 | `-o, --output <dir>` | Output directory for results | ./benchmark-results |
 | `--no-cleanup` | Do not clean up after benchmarks | false |
 | `-f, --format <format>` | Output format (simple, detailed) | simple |
+| `-b, --batch-sizes <sizes>` | Batch sizes for batch operations (comma-separated numbers) | [10, 100, 1000] |
+| `-v, --verbose` | Show verbose output | false |
 
 ### Output Formats
 
@@ -165,21 +181,27 @@ The CLI supports two output formats:
 
 ```bash
 # Run a specific benchmark with default options
-npm run cli run single-document-insertion
+npm run cli -- run single-document-insertion
 
 # Run a benchmark with detailed output format
-npm run cli run single-document-insertion -f detailed
+npm run cli -- run single-document-insertion -f detailed
 # or
-npm run cli run single-document-insertion detailed
+npm run cli -- run single-document-insertion detailed
 
 # Run a benchmark with custom MongoDB URI and 5 iterations
-npm run cli run batch-insertion -m mongodb://localhost:27017/custom_db -i 5
+npm run cli -- run batch-insertion -m mongodb://localhost:27017/custom_db -i 5
 
 # Run multiple benchmarks with medium data size
-npm run cli run single-document-insertion batch-insertion -s medium
+npm run cli -- run single-document-insertion batch-insertion -s medium
+
+# Run a batch insertion benchmark with custom batch sizes
+npm run cli -- run batch-insertion -b 5,50,500
+
+# Run a benchmark with verbose output
+npm run cli -- run batch-insertion -v
 
 # Run all benchmarks
-npm run cli run all
+npm run cli -- run all
 ```
 
 ## CLI Usage
@@ -189,7 +211,12 @@ You can use the CLI in two ways:
 ### Using npm script
 
 ```bash
-npm run cli [command] [options]
+# Important: When using npm run, you must use -- to pass arguments
+npm run cli -- [command] [options]
+
+# Examples:
+npm run cli -- run batch-insertion -b 5,50,500
+npm run cli -- run single-document-insertion -f detailed
 ```
 
 ### Using npx directly
@@ -202,12 +229,12 @@ For help on available commands and options:
 
 ```bash
 # General help
-npm run cli --help
+npm run cli -- --help
 # or
 npx ts-node src/cli.ts --help
 
 # Command-specific help
-npm run cli run --help
+npm run cli -- run --help
 # or
 npx ts-node src/cli.ts run --help
 ```
