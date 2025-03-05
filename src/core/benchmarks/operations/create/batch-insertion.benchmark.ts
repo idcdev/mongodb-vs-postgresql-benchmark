@@ -39,7 +39,7 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
   private testData: User[] = [];
   
   // Batch sizes to test
-  private readonly batchSizes: number[] = [10, 100, 1000];
+  private batchSizes: number[] = [10, 100, 1000];
   
   /**
    * Constructor

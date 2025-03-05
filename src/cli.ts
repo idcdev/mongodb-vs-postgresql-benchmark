@@ -61,7 +61,7 @@ program
   });
 
 // Helper function to connect to databases
-async function connectToDatabases(mongoUri?: string) {
+async function connectToDatabases(mongoUri?: string, _postgresUri?: string) {
   try {
     const config = configProvider;
     const mongoAdapter = new MongoDBAdapter(config);
@@ -73,9 +73,7 @@ async function connectToDatabases(mongoUri?: string) {
     
     // MongoDB connection options
     const mongoOptions = {
-      uri: mongoUri || process.env.MONGO_URI || 'mongodb://localhost:27017/benchmark',
-      useUnifiedTopology: true,
-      useNewUrlParser: true
+      uri: mongoUri || process.env.MONGO_URI || 'mongodb://localhost:27017/benchmark'
     };
     
     // PostgreSQL connection options
@@ -159,7 +157,7 @@ program
     registerAllBenchmarks(benchmarkService);
     
     // Connect to databases
-    const connected = await connectToDatabases(options.mongoUri);
+    const connected = await connectToDatabases(options.mongoUri, options.postgresUri);
     if (!connected) {
       process.exit(1);
     }

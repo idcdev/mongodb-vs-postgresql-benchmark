@@ -6,8 +6,8 @@
  */
 
 import { BaseBenchmark } from '../../../domain/model/base-benchmark';
-import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
-import { BenchmarkResult, DatabaseBenchmarkResult, EnvironmentInfo } from '../../../domain/model/benchmark-result';
+import { BenchmarkOptions } from '../../../domain/model/benchmark-options';
+import { BenchmarkResult, DatabaseBenchmarkResult } from '../../../domain/model/benchmark-result';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
 
 // Schema for validation
@@ -130,7 +130,7 @@ export class ValidatedInsertionBenchmark extends BaseBenchmark {
   private invalidData: Partial<UserSchema>[] = [];
   
   // Percentage of invalid records to include
-  private readonly invalidPercentage = 0.2; // 20% invalid records
+  private invalidPercentage = 0.2; // 20% invalid records
   
   /**
    * Constructor

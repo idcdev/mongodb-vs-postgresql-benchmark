@@ -75,9 +75,7 @@ async function setupDatabaseAdapters(
     
     // MongoDB connection options
     const mongoOptions = {
-      uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/benchmark_db',
-      useUnifiedTopology: true,
-      useNewUrlParser: true
+      uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/benchmark_db'
     };
     
     // PostgreSQL connection options

@@ -6,7 +6,7 @@
  */
 
 import { BaseBenchmark } from '../../../domain/model/base-benchmark';
-import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
+import { BenchmarkOptions } from '../../../domain/model/benchmark-options';
 import { BenchmarkResult, DatabaseBenchmarkResult } from '../../../domain/model/benchmark-result';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
 

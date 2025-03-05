@@ -19,8 +19,6 @@ import {
  */
 export interface MongoConnectionOptions extends ConnectionOptions {
   authSource?: string;
-  useNewUrlParser?: boolean;
-  useUnifiedTopology?: boolean;
   [key: string]: any;
 }
 
@@ -538,9 +536,7 @@ export class MongoDBAdapter implements DatabaseAdapter {
       authSource,
       poolSize,
       connectionTimeout,
-      idleTimeout,
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      idleTimeout
     };
   }
 

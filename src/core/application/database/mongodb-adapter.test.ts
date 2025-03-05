@@ -112,9 +112,7 @@ describe('MongoDBAdapter', () => {
         expect.objectContaining({
           maxPoolSize: 10,
           connectTimeoutMS: 30000,
-          socketTimeoutMS: 60000,
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
+          socketTimeoutMS: 60000
         })
       );
       expect(mockMongoClient.connect).toHaveBeenCalled();
