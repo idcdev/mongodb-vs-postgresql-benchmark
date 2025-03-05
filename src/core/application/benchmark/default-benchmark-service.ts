@@ -522,15 +522,27 @@ export class DefaultBenchmarkService implements BenchmarkService {
     const postgresMean = postgresqlResult.statistics.meanDurationMs;
     const postgresMedian = postgresqlResult.statistics.medianDurationMs;
     
-    const meanDiffMs = postgresMean - mongoMean;
-    const medianDiffMs = postgresMedian - mongoMedian;
-    const medianRatio = postgresMedian / mongoMedian;
-    const percentageDiff = ((postgresMedian - mongoMedian) / mongoMedian) * 100;
-    
+    // Determine winner based on which database has the lower median duration
     let winner = DatabaseType.MONGODB;
+    let percentageDiff: number;
+    
     if (postgresMedian < mongoMedian) {
       winner = DatabaseType.POSTGRESQL;
+      // Calculate how much faster PostgreSQL is compared to MongoDB
+      percentageDiff = ((mongoMedian - postgresMedian) / mongoMedian) * 100;
+    } else {
+      // Calculate how much faster MongoDB is compared to PostgreSQL
+      percentageDiff = ((postgresMedian - mongoMedian) / postgresMedian) * 100;
     }
+    
+    // Calculate absolute differences
+    const meanDiffMs = Math.abs(postgresMean - mongoMean);
+    const medianDiffMs = Math.abs(postgresMedian - mongoMedian);
+    
+    // Calculate median ratio consistently (always > 1)
+    const medianRatio = postgresMedian > mongoMedian 
+      ? postgresMedian / mongoMedian 
+      : mongoMedian / postgresMedian;
     
     return {
       meanDiffMs,

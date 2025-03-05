@@ -145,25 +145,45 @@ const calculateComparison = (mongoData: any, postgresData: any) => {
     return {
       winner: 'N/A',
       percentageDiff: 0,
-      medianRatio: 1
+      medianRatio: 1,
+      medianDiffMs: 0,
+      meanDiffMs: 0
     };
   }
   
   const mongoMedian = mongoData.statistics.medianDurationMs;
   const postgresMedian = postgresData.statistics.medianDurationMs;
+  const mongoMean = mongoData.statistics.meanDurationMs;
+  const postgresMean = postgresData.statistics.meanDurationMs;
   
+  // Determine winner based on which database has the lower median duration
   let winner = 'mongodb';
-  let percentageDiff = ((postgresMedian - mongoMedian) / postgresMedian) * 100;
+  let percentageDiff: number;
   
   if (postgresMedian < mongoMedian) {
     winner = 'postgresql';
+    // Calculate how much faster PostgreSQL is compared to MongoDB
     percentageDiff = ((mongoMedian - postgresMedian) / mongoMedian) * 100;
+  } else {
+    // Calculate how much faster MongoDB is compared to PostgreSQL
+    percentageDiff = ((postgresMedian - mongoMedian) / postgresMedian) * 100;
   }
+  
+  // Calculate absolute differences
+  const medianDiffMs = Math.abs(mongoMedian - postgresMedian);
+  const meanDiffMs = Math.abs(mongoMean - postgresMean);
+  
+  // Calculate median ratio consistently (always > 1)
+  const medianRatio = postgresMedian > mongoMedian 
+    ? postgresMedian / mongoMedian 
+    : mongoMedian / postgresMedian;
   
   return {
     winner,
     percentageDiff,
-    medianRatio: postgresMedian / mongoMedian
+    medianRatio,
+    medianDiffMs,
+    meanDiffMs
   };
 };
 
@@ -412,10 +432,10 @@ program
         
         // Show winner if both databases were tested
         if (mongoData && postgresData && mongoData.statistics && postgresData.statistics) {
-          const mongoMedian = mongoData.statistics.medianDurationMs;
-          const pgMedian = postgresData.statistics.medianDurationMs;
-          const percentageDiff = Math.abs(((mongoMedian - pgMedian) / (pgMedian < mongoMedian ? mongoMedian : pgMedian)) * 100).toFixed(2);
-          const winner = pgMedian < mongoMedian ? 'postgresql' : 'mongodb';
+          // Use the calculateComparison function to determine the winner
+          const comparison = calculateComparison(mongoData, postgresData);
+          const winner = comparison.winner;
+          const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
           
           console.log(`\nWinner: ${winner} is ${percentageDiff}% faster`);
         } else if (result.comparison) {
@@ -658,6 +678,24 @@ program
     
     console.log(chalk.green('\nAll benchmarks completed successfully!'));
     console.log(`Results saved to: ${path.resolve(outputDir)}`);
+    
+    // Disconnect from databases to ensure the process exits properly
+    try {
+      const mongoAdapter = adapters.get(DatabaseType.MONGODB);
+      const postgresAdapter = adapters.get(DatabaseType.POSTGRESQL);
+      
+      if (mongoAdapter && mongoAdapter.isConnected()) {
+        await mongoAdapter.disconnect();
+        console.log('Disconnected from MongoDB');
+      }
+      
+      if (postgresAdapter && postgresAdapter.isConnected()) {
+        await postgresAdapter.disconnect();
+        console.log('Disconnected from PostgreSQL');
+      }
+    } catch (error) {
+      console.error('Error disconnecting from databases:', error);
+    }
   });
 
 // Parse command line arguments
