@@ -128,6 +128,36 @@ function parseDataSize(size: string): DataSize {
   }
 }
 
+// Helper function to calculate comparison
+const calculateComparison = (mongoData: any, postgresData: any) => {
+  if (!mongoData || !postgresData || 
+      !mongoData.statistics || !postgresData.statistics ||
+      !mongoData.statistics.medianDurationMs || !postgresData.statistics.medianDurationMs) {
+    return {
+      winner: 'N/A',
+      percentageDiff: 0,
+      medianRatio: 1
+    };
+  }
+  
+  const mongoMedian = mongoData.statistics.medianDurationMs;
+  const postgresMedian = postgresData.statistics.medianDurationMs;
+  
+  let winner = 'mongodb';
+  let percentageDiff = ((postgresMedian - mongoMedian) / mongoMedian) * 100;
+  
+  if (postgresMedian < mongoMedian) {
+    winner = 'postgresql';
+    percentageDiff = ((mongoMedian - postgresMedian) / postgresMedian) * 100;
+  }
+  
+  return {
+    winner,
+    percentageDiff,
+    medianRatio: postgresMedian / mongoMedian
+  };
+};
+
 // Create the info command
 program
   .command('info')
@@ -243,6 +273,22 @@ program
         // Determine output format
         const format = options.format || 'simple';
         
+        // Helper function to get nested MongoDB data
+        const getMongoData = (result: any) => {
+          if (result.mongodb && result.mongodb.mongodb) {
+            return result.mongodb.mongodb;
+          }
+          return null;
+        };
+        
+        // Helper function to get nested PostgreSQL data
+        const getPostgresData = (result: any) => {
+          if (result.postgresql && result.postgresql.mongodb) {
+            return result.postgresql.mongodb;
+          }
+          return null;
+        };
+        
         if (format === 'simple') {
           // Simple output format
           console.log(chalk.cyan('\nSummary:'));
@@ -256,27 +302,35 @@ program
             ]
           });
           
-          if (result.mongodb && result.mongodb.statistics) {
+          const mongoData = getMongoData(result);
+          if (mongoData && mongoData.statistics) {
             summaryTable.push([
               chalk.yellow('MongoDB'),
-              result.mongodb.statistics.medianDurationMs.toFixed(2),
-              result.mongodb.statistics.meanDurationMs.toFixed(2),
-              result.mongodb.operation?.count || 'N/A'
+              mongoData.statistics.medianDurationMs.toFixed(2),
+              mongoData.statistics.meanDurationMs.toFixed(2),
+              mongoData.operation?.count || 'N/A'
             ]);
           }
           
-          if (result.postgresql && result.postgresql.statistics) {
+          const postgresData = getPostgresData(result);
+          if (postgresData && postgresData.statistics) {
             summaryTable.push([
               chalk.blue('PostgreSQL'),
-              result.postgresql.statistics.medianDurationMs.toFixed(2),
-              result.postgresql.statistics.meanDurationMs.toFixed(2),
-              result.postgresql.operation?.count || 'N/A'
+              postgresData.statistics.medianDurationMs.toFixed(2),
+              postgresData.statistics.meanDurationMs.toFixed(2),
+              postgresData.operation?.count || 'N/A'
             ]);
           }
           
           console.log(summaryTable.toString());
           
-          if (result.comparison) {
+          // Calculate and display comparison
+          if (mongoData && postgresData) {
+            const comparison = calculateComparison(mongoData, postgresData);
+            const winner = comparison.winner;
+            const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
+            console.log(`\n${chalk.bold('Winner')}: ${chalk.bold(winner)} is ${chalk.bold(percentageDiff)}% faster`);
+          } else if (result.comparison) {
             const winner = result.comparison.winner;
             const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
             console.log(`\n${chalk.bold('Winner')}: ${chalk.bold(winner)} is ${chalk.bold(percentageDiff)}% faster`);
@@ -297,25 +351,27 @@ program
             ]
           });
           
-          if (result.mongodb && result.mongodb.statistics) {
+          const mongoData = getMongoData(result);
+          if (mongoData && mongoData.statistics) {
             statsTable.push([
               chalk.yellow('MongoDB'),
-              result.mongodb.statistics.minDurationMs.toFixed(2),
-              result.mongodb.statistics.maxDurationMs.toFixed(2),
-              result.mongodb.statistics.meanDurationMs.toFixed(2),
-              chalk.bold(result.mongodb.statistics.medianDurationMs.toFixed(2)),
-              result.mongodb.statistics.stdDevDurationMs.toFixed(2)
+              mongoData.statistics.minDurationMs.toFixed(2),
+              mongoData.statistics.maxDurationMs.toFixed(2),
+              mongoData.statistics.meanDurationMs.toFixed(2),
+              chalk.bold(mongoData.statistics.medianDurationMs.toFixed(2)),
+              mongoData.statistics.stdDevDurationMs.toFixed(2)
             ]);
           }
           
-          if (result.postgresql && result.postgresql.statistics) {
+          const postgresData = getPostgresData(result);
+          if (postgresData && postgresData.statistics) {
             statsTable.push([
               chalk.blue('PostgreSQL'),
-              result.postgresql.statistics.minDurationMs.toFixed(2),
-              result.postgresql.statistics.maxDurationMs.toFixed(2),
-              result.postgresql.statistics.meanDurationMs.toFixed(2),
-              chalk.bold(result.postgresql.statistics.medianDurationMs.toFixed(2)),
-              result.postgresql.statistics.stdDevDurationMs.toFixed(2)
+              postgresData.statistics.minDurationMs.toFixed(2),
+              postgresData.statistics.maxDurationMs.toFixed(2),
+              postgresData.statistics.meanDurationMs.toFixed(2),
+              chalk.bold(postgresData.statistics.medianDurationMs.toFixed(2)),
+              postgresData.statistics.stdDevDurationMs.toFixed(2)
             ]);
           }
           
@@ -324,13 +380,13 @@ program
           // Show iteration details
           console.log(chalk.cyan('\nIterations:'));
           
-          if (result.mongodb && result.mongodb.iterations) {
+          if (mongoData && mongoData.iterations) {
             console.log(chalk.yellow('\nMongoDB:'));
             const mongoTable = new Table({
               head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
             });
             
-            result.mongodb.iterations.forEach((iter: any, index: number) => {
+            mongoData.iterations.forEach((iter: any, index: number) => {
               mongoTable.push([
                 index + 1,
                 typeof iter === 'object' && 'durationMs' in iter 
@@ -342,13 +398,13 @@ program
             console.log(mongoTable.toString());
           }
           
-          if (result.postgresql && result.postgresql.iterations) {
+          if (postgresData && postgresData.iterations) {
             console.log(chalk.blue('\nPostgreSQL:'));
             const pgTable = new Table({
               head: [chalk.white('Iteration'), chalk.white('Duration (ms)')]
             });
             
-            result.postgresql.iterations.forEach((iter: any, index: number) => {
+            postgresData.iterations.forEach((iter: any, index: number) => {
               pgTable.push([
                 index + 1,
                 typeof iter === 'object' && 'durationMs' in iter 
@@ -361,7 +417,22 @@ program
           }
           
           // Show comparison if available
-          if (result.comparison) {
+          if (mongoData && postgresData) {
+            console.log(chalk.cyan('\nComparison:'));
+            const comparison = calculateComparison(mongoData, postgresData);
+            const winner = comparison.winner;
+            const percentageDiff = Math.abs(comparison.percentageDiff).toFixed(2);
+            
+            const comparisonTable = new Table();
+            
+            comparisonTable.push(
+              { 'Winner': chalk.bold(winner) },
+              { 'Difference': `${chalk.bold(percentageDiff)}%` },
+              { 'Median Ratio': comparison.medianRatio.toFixed(2) }
+            );
+            
+            console.log(comparisonTable.toString());
+          } else if (result.comparison) {
             console.log(chalk.cyan('\nComparison:'));
             const winner = result.comparison.winner;
             const percentageDiff = Math.abs(result.comparison.percentageDiff || 0).toFixed(2);
@@ -378,18 +449,18 @@ program
           }
           
           // Show operation metadata
-          if (result.mongodb && result.mongodb.operation) {
+          if (mongoData && mongoData.operation) {
             console.log(chalk.cyan('\nOperation Details:'));
             
             const metadataTable = new Table();
             
             metadataTable.push(
-              { 'Type': result.mongodb.operation.type },
-              { 'Count': result.mongodb.operation.count }
+              { 'Type': mongoData.operation.type },
+              { 'Count': mongoData.operation.count }
             );
             
-            if (result.mongodb.operation.metadata) {
-              Object.entries(result.mongodb.operation.metadata).forEach(([key, value]) => {
+            if (mongoData.operation.metadata) {
+              Object.entries(mongoData.operation.metadata).forEach(([key, value]) => {
                 const row: Record<string, any> = {};
                 row[key] = value;
                 metadataTable.push(row);
