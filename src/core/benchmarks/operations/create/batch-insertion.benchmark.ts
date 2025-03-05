@@ -41,6 +41,9 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
   // Batch sizes to test
   private batchSizes: number[] = [10, 100, 1000];
   
+  // Flag to track if setup has been completed
+  private setupCompleted = false;
+  
   /**
    * Constructor
    */
@@ -56,6 +59,11 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
    * Creates the necessary collection/table and prepares test data
    */
   public async setup(options: BenchmarkOptions): Promise<void> {
+    // Skip setup if already completed to avoid duplicate execution
+    if (this.setupCompleted) {
+      return;
+    }
+    
     const dataSize = this.getDataSize(options.size, options.customSize);
     
     // Generate test data
@@ -64,12 +72,15 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
     // Override batch sizes if provided in options
     if (options.batchSizes && Array.isArray(options.batchSizes) && options.batchSizes.length > 0) {
       console.log(`Custom batch sizes provided: ${options.batchSizes.join(', ')}`);
+      this.batchSizes = [...options.batchSizes]; // Criar uma cópia para evitar referências compartilhadas
     }
     
     if (options.verbose) {
       console.log(`Generated ${this.testData.length} test documents for batch insertion benchmark`);
       console.log(`Using batch sizes: ${this.batchSizes.join(', ')}`);
     }
+    
+    this.setupCompleted = true;
   }
   
   /**
@@ -83,17 +94,38 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
       environment: this.getEnvironmentInfo()
     };
     
-    // Run for each supported database adapter
-    for (const dbType of this.supportedDatabases) {
-      if (options.verbose) {
-        console.log(`Running batch insertion benchmark for ${dbType}...`);
+    // Verificar se estamos executando para um banco de dados específico
+    const targetDatabase = options.targetDatabase;
+    
+    if (targetDatabase) {
+      // Executar apenas para o banco de dados alvo
+      if (this.supportedDatabases.includes(targetDatabase as unknown as DatabaseType)) {
+        const dbType = targetDatabase as unknown as DatabaseType;
+        
+        if (options.verbose) {
+          console.log(`Running batch insertion benchmark for ${dbType}...`);
+        }
+        
+        const dbResult = await this.runForDatabase(dbType, options);
+        if (dbType === DatabaseType.MONGODB) {
+          result.mongodb = dbResult;
+        } else if (dbType === DatabaseType.POSTGRESQL) {
+          result.postgresql = dbResult;
+        }
       }
-      
-      const dbResult = await this.runForDatabase(dbType, options);
-      if (dbType === DatabaseType.MONGODB) {
-        result.mongodb = dbResult;
-      } else if (dbType === DatabaseType.POSTGRESQL) {
-        result.postgresql = dbResult;
+    } else {
+      // Executar para todos os bancos de dados suportados
+      for (const dbType of this.supportedDatabases) {
+        if (options.verbose) {
+          console.log(`Running batch insertion benchmark for ${dbType}...`);
+        }
+        
+        const dbResult = await this.runForDatabase(dbType, options);
+        if (dbType === DatabaseType.MONGODB) {
+          result.mongodb = dbResult;
+        } else if (dbType === DatabaseType.POSTGRESQL) {
+          result.postgresql = dbResult;
+        }
       }
     }
     
@@ -122,6 +154,9 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
    * Removes test collections/tables
    */
   public async cleanup(options: BenchmarkOptions): Promise<void> {
+    // Reset the setup flag when cleanup is performed
+    this.setupCompleted = false;
+    
     if (!options.cleanupEnvironment) {
       return;
     }
@@ -180,6 +215,10 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
       const batchResults = [];
       
       for (const batchSize of this.batchSizes) {
+        if (options.verbose) {
+          console.log(`  Testing batch size: ${batchSize}`);
+        }
+        
         const result = await this.executeBatchInsertion(
           adapter, 
           batchSize,
@@ -211,19 +250,21 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
     
     await adapter.disconnect();
     
-    // Calculate statistics
-    const statistics = this.calculateStatistics(durations);
-    
+    // Add batch results to the database result
     return {
       databaseType,
       durations,
-      iterations: metricsArray,
-      statistics,
+      statistics: this.calculateStatistics(durations),
+      iterations: durations.map((duration, index) => ({
+        iteration: index + 1,
+        durationMs: duration
+      })),
       operation: {
         type: 'batch-insert',
         count: this.testData.length,
         metadata: {
-          batchSizes: this.batchSizes
+          batchSizes: this.batchSizes,
+          batchResults: metricsArray
         }
       }
     };

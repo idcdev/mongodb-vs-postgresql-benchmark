@@ -134,6 +134,7 @@ export class DefaultBenchmarkService implements BenchmarkService {
         options || {}
       );
       
+      // Emit event only once at the beginning
       this.eventEmitter.emit('benchmark:started', { name, options: benchmarkOptions });
       
       // Prepare result object
@@ -166,6 +167,7 @@ export class DefaultBenchmarkService implements BenchmarkService {
         await this.saveResults(name, result);
       }
       
+      // Emit completion event only once at the end
       this.eventEmitter.emit('benchmark:completed', { name, result });
       
       return result;
@@ -199,18 +201,23 @@ export class DefaultBenchmarkService implements BenchmarkService {
         throw new Error(`Benchmark '${name}' does not support database type '${databaseType}'`);
       }
       
-      const adapter = this.getDatabaseAdapter(databaseType);
-      
-      if (!adapter) {
-        throw new Error(`Database adapter for type '${databaseType}' not found`);
-      }
-      
       // Merge options with defaults
       const benchmarkOptions = this.mergeOptions(
         benchmark.getDefaultOptions(),
         this.defaultOptions,
         options || {}
       );
+      
+      // Set the target database in the options
+      if (!benchmarkOptions.databaseOptions) {
+        benchmarkOptions.databaseOptions = {
+          mongodb: {},
+          postgresql: {}
+        };
+      }
+      
+      // Adicionar uma propriedade personalizada para o banco de dados alvo
+      benchmarkOptions.targetDatabase = databaseType.toString();
       
       this.eventEmitter.emit('benchmark:database:started', { 
         name, 
@@ -219,6 +226,10 @@ export class DefaultBenchmarkService implements BenchmarkService {
       });
       
       // Connect to database if not already connected
+      const adapter = this.getDatabaseAdapter(databaseType);
+      if (!adapter) {
+        throw new Error(`Database adapter for type '${databaseType}' not found`);
+      }
       if (!adapter.isConnected()) {
         await adapter.connect();
       }
