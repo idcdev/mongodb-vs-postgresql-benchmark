@@ -6,21 +6,17 @@
  */
 
 import { Command } from 'commander';
-import { EventEmitter } from 'events';
 import { DefaultConfigProvider } from './core/application/config/default-config-provider';
 import { DefaultEventEmitter } from './core/application/events/default-event-emitter';
 import { DefaultBenchmarkService } from './core/application/benchmark/default-benchmark-service';
-import { DatabaseAdapter, DatabaseType } from './core/domain/interfaces/database-adapter.interface';
-import { DataSize, BenchmarkOptions } from './core/domain/model/benchmark-options';
-import { BenchmarkResult } from './core/domain/model/benchmark-result';
+import { DatabaseType } from './core/domain/interfaces/database-adapter.interface';
+import { DataSize } from './core/domain/model/benchmark-options';
 import { MongoDBAdapter } from './core/application/database/mongodb-adapter';
 import { PostgreSQLAdapter } from './core/application/database/postgresql-adapter';
-import { ConfigProvider } from './core/domain/interfaces/config-provider.interface';
 import { registerAllBenchmarks } from './core/benchmarks';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
-import { BenchmarkService } from './core/domain/interfaces/benchmark-service.interface';
 
 // Load environment variables
 dotenv.config();
@@ -65,7 +61,7 @@ program
   });
 
 // Helper function to connect to databases
-async function connectToDatabases(mongoUri?: string, postgresUri?: string) {
+async function connectToDatabases(mongoUri?: string) {
   try {
     const config = configProvider;
     const mongoAdapter = new MongoDBAdapter(config);
@@ -163,7 +159,7 @@ program
     registerAllBenchmarks(benchmarkService);
     
     // Connect to databases
-    const connected = await connectToDatabases(options.mongoUri, options.postgresUri);
+    const connected = await connectToDatabases(options.mongoUri);
     if (!connected) {
       process.exit(1);
     }

@@ -6,8 +6,8 @@
  */
 
 import { BaseBenchmark } from '../../../domain/model/base-benchmark';
-import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
-import { BenchmarkResult, DatabaseBenchmarkResult, EnvironmentInfo } from '../../../domain/model/benchmark-result';
+import { BenchmarkOptions } from '../../../domain/model/benchmark-options';
+import { BenchmarkResult, DatabaseBenchmarkResult } from '../../../domain/model/benchmark-result';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
 
 // Simple user document/record structure for the benchmark
@@ -63,11 +63,11 @@ export class BatchInsertionBenchmark extends BaseBenchmark {
     
     // Override batch sizes if provided in options
     if (options.batchSizes && Array.isArray(options.batchSizes) && options.batchSizes.length > 0) {
-      this.batchSizes = options.batchSizes;
+      console.log(`Custom batch sizes provided: ${options.batchSizes.join(', ')}`);
     }
     
     if (options.verbose) {
-      console.log(`Generated ${dataSize} test documents for batch insertion benchmark`);
+      console.log(`Generated ${this.testData.length} test documents for batch insertion benchmark`);
       console.log(`Using batch sizes: ${this.batchSizes.join(', ')}`);
     }
   }
