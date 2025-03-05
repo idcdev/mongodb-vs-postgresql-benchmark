@@ -82,7 +82,7 @@ npm run cli info
 npm run cli run <benchmark-name>
 
 # Examples:
-npm run cli run "Single Document Insertion"
+npm run cli run single-document-insertion
 npm run cli run batch-insertion
 npm run cli run single-document-query
 ```
