@@ -93,17 +93,19 @@ describe('DefaultBenchmarkService', () => {
     isConnected: jest.fn().mockReturnValue(true),
     createCollection: jest.fn().mockResolvedValue(undefined),
     dropCollection: jest.fn().mockResolvedValue(true),
-    insertOne: jest.fn().mockResolvedValue({ _id: 'test-id' }),
-    insertMany: jest.fn().mockResolvedValue([{ _id: 'test-id' }]),
-    find: jest.fn().mockResolvedValue([{ _id: 'test-id' }]),
-    findOne: jest.fn().mockResolvedValue({ _id: 'test-id' }),
-    findById: jest.fn().mockResolvedValue({ _id: 'test-id' }),
-    updateOne: jest.fn().mockResolvedValue({ _id: 'test-id' }),
-    updateMany: jest.fn().mockResolvedValue({ matchedCount: 1, modifiedCount: 1 }),
+    insertOne: jest.fn().mockResolvedValue({ insertedId: 'test-id' }),
+    insertMany: jest.fn().mockResolvedValue([{ insertedId: 'test-id-1' }, { insertedId: 'test-id-2' }]),
+    find: jest.fn().mockResolvedValue([{ id: 'test-id', name: 'Test' }]),
+    findOne: jest.fn().mockResolvedValue({ id: 'test-id', name: 'Test' }),
+    findById: jest.fn().mockResolvedValue({ id: 'test-id', name: 'Test' }),
+    updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+    updateMany: jest.fn().mockResolvedValue({ modifiedCount: 2 }),
     deleteOne: jest.fn().mockResolvedValue(true),
-    deleteMany: jest.fn().mockResolvedValue(1),
-    count: jest.fn().mockResolvedValue(1),
-    executeRawQuery: jest.fn().mockResolvedValue({ result: 'success' })
+    deleteMany: jest.fn().mockResolvedValue(2),
+    count: jest.fn().mockResolvedValue(10),
+    executeRawQuery: jest.fn().mockResolvedValue({ result: 'success' }),
+    collectionExists: jest.fn().mockResolvedValue(true),
+    objectId: jest.fn().mockImplementation(id => id)
   });
   
   let benchmarkService: DefaultBenchmarkService;

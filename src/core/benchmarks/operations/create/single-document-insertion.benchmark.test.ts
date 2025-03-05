@@ -1,74 +1,80 @@
 /**
  * Tests for SingleDocumentInsertionBenchmark
+ * 
+ * This file contains tests for the benchmark that measures performance of
+ * inserting individual documents in MongoDB and PostgreSQL.
  */
 
 import { SingleDocumentInsertionBenchmark } from './single-document-insertion.benchmark';
-import { BenchmarkOptions, DataSize } from '../../../domain/model/benchmark-options';
 import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/database-adapter.interface';
+import { BenchmarkOptions } from '../../../domain/model/benchmark-options';
+import { jest } from '@jest/globals';
 
-// Mock the DatabaseAdapter
-const createMockAdapter = () => {
-  const mockAdapter: jest.Mocked<DatabaseAdapter> = {
+// Mock for DatabaseAdapter
+const createMockAdapter = (): Partial<DatabaseAdapter> => {
+  return {
+    getType: jest.fn().mockReturnValue(DatabaseType.MONGODB),
     connect: jest.fn().mockResolvedValue(undefined),
     disconnect: jest.fn().mockResolvedValue(undefined),
-    isConnected: jest.fn().mockReturnValue(true),
-    createCollection: jest.fn().mockResolvedValue(true),
-    collectionExists: jest.fn().mockResolvedValue(false),
+    executeRawQuery: jest.fn().mockResolvedValue({}),
+    insertOne: jest.fn().mockResolvedValue({ insertedId: 'mock-id-123' }),
+    deleteMany: jest.fn().mockResolvedValue(5),
+    createCollection: jest.fn().mockResolvedValue(undefined),
     dropCollection: jest.fn().mockResolvedValue(true),
-    insertOne: jest.fn().mockImplementation(() => Promise.resolve({ id: '123' })),
-    insertMany: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    updateOne: jest.fn(),
-    updateMany: jest.fn(),
-    deleteOne: jest.fn(),
-    deleteMany: jest.fn().mockResolvedValue({ deletedCount: 0 }),
-    count: jest.fn(),
-    executeRawQuery: jest.fn(),
-    getDatabaseType: jest.fn().mockReturnValue(DatabaseType.MONGODB),
-    getConnectionOptions: jest.fn().mockReturnValue({})
+    collectionExists: jest.fn().mockResolvedValue(false),
+    objectId: jest.fn().mockImplementation((id: string) => id),
+    isConnected: jest.fn().mockReturnValue(true)
   };
-  
-  return mockAdapter;
 };
 
 describe('SingleDocumentInsertionBenchmark', () => {
   let benchmark: SingleDocumentInsertionBenchmark;
   let mockMongoAdapter: jest.Mocked<DatabaseAdapter>;
-  let mockPostgresAdapter: jest.Mocked<DatabaseAdapter>;
+  let mockPgAdapter: jest.Mocked<DatabaseAdapter>;
+  let defaultOptions: BenchmarkOptions;
   
   beforeEach(() => {
-    // Create a new benchmark instance before each test
+    // Create a fresh benchmark and mock adapters for each test
     benchmark = new SingleDocumentInsertionBenchmark();
     
-    // Create mock adapters
-    mockMongoAdapter = createMockAdapter();
-    mockMongoAdapter.getDatabaseType.mockReturnValue(DatabaseType.MONGODB);
+    // Setup mock adapters
+    mockMongoAdapter = createMockAdapter() as jest.Mocked<DatabaseAdapter>;
+    (mockMongoAdapter.getType as jest.Mock).mockReturnValue(DatabaseType.MONGODB);
     
-    mockPostgresAdapter = createMockAdapter();
-    mockPostgresAdapter.getDatabaseType.mockReturnValue(DatabaseType.POSTGRESQL);
+    mockPgAdapter = createMockAdapter() as jest.Mocked<DatabaseAdapter>;
+    (mockPgAdapter.getType as jest.Mock).mockReturnValue(DatabaseType.POSTGRESQL);
     
-    // Override the getAdapter method to return our mock adapters
-    jest.spyOn(benchmark as any, 'getAdapter').mockImplementation((dbType: DatabaseType) => {
-      return dbType === DatabaseType.MONGODB ? mockMongoAdapter : mockPostgresAdapter;
+    // Mock getAdapter method to return our mock adapters
+    jest.spyOn(benchmark as any, 'getAdapter').mockImplementation(function(dbType: any) {
+      return dbType === DatabaseType.MONGODB ? mockMongoAdapter : mockPgAdapter;
     });
+    
+    // Default options for tests
+    defaultOptions = {
+      size: 'small',
+      iterations: 2,
+      setupEnvironment: true,
+      cleanupEnvironment: true,
+      saveResults: false,
+      verbose: false
+    };
   });
   
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
   
   describe('constructor', () => {
-    it('should set the correct name and description', () => {
+    it('should initialize with correct name and description', () => {
       expect(benchmark.getName()).toBe('single-document-insertion');
-      expect(benchmark.getDescription()).toContain('inserting individual documents');
+      expect(benchmark.getDescription()).toContain('individual documents');
     });
   });
   
   describe('setup', () => {
     it('should generate test data based on specified size', async () => {
       const options: BenchmarkOptions = {
-        size: DataSize.SMALL,
+        size: 'small',
         iterations: 3,
         setupEnvironment: true,
         cleanupEnvironment: true,
@@ -86,7 +92,7 @@ describe('SingleDocumentInsertionBenchmark', () => {
     
     it('should respect custom size when specified', async () => {
       const options: BenchmarkOptions = {
-        size: DataSize.CUSTOM,
+        size: 'custom',
         customSize: 50,
         iterations: 3,
         setupEnvironment: true,
@@ -107,7 +113,7 @@ describe('SingleDocumentInsertionBenchmark', () => {
       jest.spyOn(benchmark, 'getSupportedDatabases').mockReturnValue([DatabaseType.MONGODB]);
       
       const options: BenchmarkOptions = {
-        size: DataSize.CUSTOM,
+        size: 'custom',
         customSize: 10, // Small size for faster test
         iterations: 2,
         setupEnvironment: true,
@@ -136,7 +142,7 @@ describe('SingleDocumentInsertionBenchmark', () => {
     
     it('should generate comparison when both databases are tested', async () => {
       const options: BenchmarkOptions = {
-        size: DataSize.CUSTOM,
+        size: 'custom',
         customSize: 5, // Very small for faster test
         iterations: 1,
         setupEnvironment: true,
@@ -158,7 +164,7 @@ describe('SingleDocumentInsertionBenchmark', () => {
   describe('cleanup', () => {
     it('should drop collections if cleanupEnvironment is true', async () => {
       const options: BenchmarkOptions = {
-        size: DataSize.CUSTOM,
+        size: 'custom',
         customSize: 5,
         iterations: 1,
         setupEnvironment: true,
@@ -168,7 +174,7 @@ describe('SingleDocumentInsertionBenchmark', () => {
       
       // Mock that collections exist for this test
       mockMongoAdapter.collectionExists.mockResolvedValue(true);
-      mockPostgresAdapter.collectionExists.mockResolvedValue(true);
+      mockPgAdapter.collectionExists.mockResolvedValue(true);
       
       await benchmark.cleanup(options);
       
@@ -177,14 +183,14 @@ describe('SingleDocumentInsertionBenchmark', () => {
       expect(mockMongoAdapter.dropCollection).toHaveBeenCalled();
       expect(mockMongoAdapter.disconnect).toHaveBeenCalled();
       
-      expect(mockPostgresAdapter.connect).toHaveBeenCalled();
-      expect(mockPostgresAdapter.dropCollection).toHaveBeenCalled();
-      expect(mockPostgresAdapter.disconnect).toHaveBeenCalled();
+      expect(mockPgAdapter.connect).toHaveBeenCalled();
+      expect(mockPgAdapter.dropCollection).toHaveBeenCalled();
+      expect(mockPgAdapter.disconnect).toHaveBeenCalled();
     });
     
     it('should not drop collections if cleanupEnvironment is false', async () => {
       const options: BenchmarkOptions = {
-        size: DataSize.CUSTOM,
+        size: 'custom',
         customSize: 5,
         iterations: 1,
         setupEnvironment: true,
@@ -197,8 +203,8 @@ describe('SingleDocumentInsertionBenchmark', () => {
       // Verify no collections were dropped
       expect(mockMongoAdapter.connect).not.toHaveBeenCalled();
       expect(mockMongoAdapter.dropCollection).not.toHaveBeenCalled();
-      expect(mockPostgresAdapter.connect).not.toHaveBeenCalled();
-      expect(mockPostgresAdapter.dropCollection).not.toHaveBeenCalled();
+      expect(mockPgAdapter.connect).not.toHaveBeenCalled();
+      expect(mockPgAdapter.dropCollection).not.toHaveBeenCalled();
     });
   });
 }); 

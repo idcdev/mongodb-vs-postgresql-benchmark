@@ -9,6 +9,7 @@ import { DatabaseAdapter, DatabaseType } from '../../../domain/interfaces/databa
 // Mock the DatabaseAdapter
 const createMockAdapter = () => {
   const mockAdapter: jest.Mocked<DatabaseAdapter> = {
+    getType: jest.fn().mockReturnValue(DatabaseType.MONGODB),
     connect: jest.fn().mockResolvedValue(undefined),
     disconnect: jest.fn().mockResolvedValue(undefined),
     isConnected: jest.fn().mockReturnValue(true),
@@ -27,7 +28,6 @@ const createMockAdapter = () => {
     deleteMany: jest.fn().mockResolvedValue({ deletedCount: 0 }),
     count: jest.fn(),
     executeRawQuery: jest.fn(),
-    getDatabaseType: jest.fn().mockReturnValue(DatabaseType.MONGODB),
     getConnectionOptions: jest.fn().mockReturnValue({})
   };
   
@@ -45,10 +45,10 @@ describe('BatchInsertionBenchmark', () => {
     
     // Create mock adapters
     mockMongoAdapter = createMockAdapter();
-    mockMongoAdapter.getDatabaseType.mockReturnValue(DatabaseType.MONGODB);
+    mockMongoAdapter.getType.mockReturnValue(DatabaseType.MONGODB);
     
     mockPostgresAdapter = createMockAdapter();
-    mockPostgresAdapter.getDatabaseType.mockReturnValue(DatabaseType.POSTGRESQL);
+    mockPostgresAdapter.getType.mockReturnValue(DatabaseType.POSTGRESQL);
     
     // Override the getAdapter method to return our mock adapters
     jest.spyOn(benchmark as any, 'getAdapter').mockImplementation((dbType: DatabaseType) => {
