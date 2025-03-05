@@ -180,28 +180,28 @@ npm run reset:db
 
 | Benchmark | Status | Operation Type |
 |-----------|--------|----------------|
-| SingleDocumentInsertion | ✅ Complete | Create |
-| BatchInsertion | ✅ Complete | Create |
-| ValidatedInsertion | ✅ Complete | Create |
-| SingleDocumentQuery | ✅ Complete | Read |
-| MultipleDocumentQuery | 🔄 Planned | Read |
-| FilteredQuery | 🔄 Planned | Read |
-| DocumentUpdate | 🔄 Planned | Update |
-| BatchUpdate | 🔄 Planned | Update |
-| DocumentDeletion | 🔄 Planned | Delete |
-| BatchDeletion | 🔄 Planned | Delete |
+| single-document-insertion | ✅ Complete | Create |
+| batch-insertion | ✅ Complete | Create |
+| validated-insertion | ✅ Complete | Create |
+| single-document-query | ✅ Complete | Read |
+| multiple-document-query | 🔄 Planned | Read |
+| filtered-query | 🔄 Planned | Read |
+| document-update | 🔄 Planned | Update |
+| batch-update | 🔄 Planned | Update |
+| document-deletion | 🔄 Planned | Delete |
+| batch-deletion | 🔄 Planned | Delete |
 
 ## Benchmark Types
 
 ### Create Operation Benchmarks
-- **SingleDocumentInsertion**: Tests the performance of single document insertion
-- **BatchInsertion**: Tests bulk insertion with different batch sizes
-- **ValidatedInsertion**: Tests performance impact of document/record validation
+- **single-document-insertion**: Tests the performance of single document insertion
+- **batch-insertion**: Tests bulk insertion with different batch sizes
+- **validated-insertion**: Tests performance impact of document/record validation
 
 ### Read Operation Benchmarks
-- **SingleDocumentQuery**: Tests performance of retrieving documents by ID
-- **MultipleDocumentQuery** (Planned): Tests retrieving multiple documents with simple filtering
-- **FilteredQuery** (Planned): Tests complex query filtering operations
+- **single-document-query**: Tests performance of retrieving documents by ID
+- **multiple-document-query** (Planned): Tests retrieving multiple documents with simple filtering
+- **filtered-query** (Planned): Tests complex query filtering operations
 
 ## Architecture
 
